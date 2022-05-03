@@ -27,8 +27,7 @@ jobs:
       - name: install
         shell: bash
         run: |
-          pip install pytest
-          pip install .
+          pip install .[test]
 
       - name: test
         shell: bash
