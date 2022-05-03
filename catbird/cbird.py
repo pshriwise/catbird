@@ -2,7 +2,8 @@ import json
 
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
-                'Float' : float}
+                'Float' : float,
+                'String' : str}
 
 
 class Catbird:
@@ -52,6 +53,13 @@ class Catbird:
     @classmethod
     def from_json(cls, json_file):
 
+        def convert_to_type(t, val):
+            if t == bool:
+                val = bool(int(val))
+            else:
+                val = t(val)
+            return val
+
         inst = cls()
 
         with open(json_file, 'r') as fh:
@@ -64,14 +72,18 @@ class Catbird:
         for param_name, param_info in params.items():
             attr_type = type_mapping[param_info['basic_type']]
 
-            inst.newattr(param_name, attr_type, desc=param_info.get('description'))
+            allowed_values = None
+            if param_info['options']:
+                values = param_info['options'].split()
+                allowed_values = [convert_to_type(attr_type, v) for v in values]
 
-            if 'default' in param_info:
-                val = param_info['default']
-                if attr_type == bool:
-                    val = bool(int(val))
-                else:
-                    val = attr_type(val)
+            inst.newattr(param_name,
+                         attr_type,
+                         desc=param_info.get('description'),
+                         allowed_vals=allowed_values)
+
+            if 'default' in param_info and param_info['default'] != 'none':
+                val = convert_to_type(attr_type, param_info['default'])
                 setattr(inst, param_name, val)
 
         return inst

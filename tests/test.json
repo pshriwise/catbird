@@ -36,6 +36,19 @@
       "options": "",
       "out_of_range_allowed": false,
       "required": false
+    },
+    "k_trigger": {
+      "basic_type": "String",
+      "controllable": false,
+      "cpp_type": "MooseEnum",
+      "default": "none",
+      "deprecated": false,
+      "description": "Trigger criterion to determine when OpenMC simulation is complete based on k; options: variance, std_dev, rel_err, none (default)",
+      "group_name": "",
+      "name": "k_trigger",
+      "options": "variance std_dev rel_err none",
+      "out_of_range_allowed": false,
+      "required": false
     }
   }
 }

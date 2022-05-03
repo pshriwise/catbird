@@ -43,5 +43,13 @@ def test_from_json(request):
     assert c.batch_interval == 1
     assert c.batches == None
 
+    # test property with allowed vals
+    assert c.k_trigger == None
+    c.k_trigger = 'variance'
+    assert c.k_trigger == 'variance'
+
+    with pytest.raises(ValueError):
+        c.k_trigger ='invalid trigger'
+
 if __name__ == '__main__':
     pytest.main()
