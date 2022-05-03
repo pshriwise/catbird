@@ -25,6 +25,15 @@ def test_attrs():
     with pytest.raises(ValueError) as e:
         c.i = 'fifteen'
 
+    c.newattr('picky', int, [1, 2, 3])
+
+    assert c.picky == None
+    c.picky = 1
+    assert c.picky == 1
+
+    with pytest.raises(ValueError) as e:
+        c.picky = 5
+
 
 if __name__ == '__main__':
     pytest.main()
