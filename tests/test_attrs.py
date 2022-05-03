@@ -35,9 +35,9 @@ def test_attrs():
         c.picky = 5
 
 
-def test_from_json():
+def test_from_json(request):
 
-    c = Catbird.from_json('test.json')
+    c = Catbird.from_json(request.fspath.dirpath() / 'test.json')
 
     assert c.assume_separate_tallies == False
     assert c.batch_interval == 1
