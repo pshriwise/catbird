@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+
+  main:
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: install
+        shell: bash
+        run: |
+          pip install pytest
+          pip install .
+
+      - name: test
+        shell: bash
+        run: |
+          pytest -v tests
