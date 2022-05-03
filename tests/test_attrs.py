@@ -35,5 +35,13 @@ def test_attrs():
         c.picky = 5
 
 
+def test_from_json():
+
+    c = Catbird.from_json('test.json')
+
+    assert c.assume_separate_tallies == False
+    assert c.batch_interval == 1
+    assert c.batches == None
+
 if __name__ == '__main__':
     pytest.main()

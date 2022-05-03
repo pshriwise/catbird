@@ -1,3 +1,8 @@
+import json
+
+type_mapping = {'Integer' : int,
+                'Boolean' : bool,
+                'Float' : float}
 
 
 class Catbird:
@@ -32,7 +37,7 @@ class Catbird:
             setattr(self, '_'+name, val)
         return fset
 
-    def newattr(self, attr_name, attr_type=str, allowed_vals=None):
+    def newattr(self, attr_name, attr_type=str, allowed_vals=None, desc=None):
         if not isinstance(attr_name, str):
             raise ValueError('Attributes must be strings')
         prop = property(fget=self.prop_get(attr_name),
@@ -40,3 +45,33 @@ class Catbird:
         setattr(self.__class__, attr_name, prop)
         setattr(self.__class__, '_'+attr_name, None)
 
+        if desc is not None:
+            getattr(self.__class__, attr_name).__doc__ = desc
+
+
+    @classmethod
+    def from_json(cls, json_file):
+
+        inst = cls()
+
+        with open(json_file, 'r') as fh:
+            j = json.loads(fh.read())
+
+        # get "parameters" block
+
+        params = j['parameters']
+
+        for param_name, param_info in params.items():
+            attr_type = type_mapping[param_info['basic_type']]
+
+            inst.newattr(param_name, attr_type, desc=param_info.get('description'))
+
+            if 'default' in param_info:
+                val = param_info['default']
+                if attr_type == bool:
+                    val = bool(int(val))
+                else:
+                    val = attr_type(val)
+                setattr(inst, param_name, val)
+
+        return inst
