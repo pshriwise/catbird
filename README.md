@@ -1,4 +1,4 @@
-![CI](https://github.com/pshriwise/catbird/actions/workflows/ci/badge.svg)
+![CI](https://github.com/pshriwise/catbird/actions/workflows/ci.yml/badge.svg)
 
 Catbird
 -------
