@@ -1,7 +1,7 @@
 
 import pytest
 
-from catbird.obj import Catbird
+from catbird import Catbird
 
 def test_attrs():
 

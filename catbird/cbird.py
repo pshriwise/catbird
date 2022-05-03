@@ -34,7 +34,7 @@ class Catbird:
             self.check_type(name, val, attr_type)
             if allowed_vals is not None:
                 self.check_vals(name, val, allowed_vals)
-            setattr(self, '_'+name, val)
+            setattr(self.__class__, '_'+name, val)
         return fset
 
     def newattr(self, attr_name, attr_type=str, allowed_vals=None, desc=None):
