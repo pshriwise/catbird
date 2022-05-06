@@ -66,7 +66,9 @@ class Catbird:
                 val = t(val)
             return val
 
-        inst = cls()
+        # create new subclass of Catbird
+        new_cls = type('cardinal', (cls,), dict())
+        inst = new_cls()
 
         with open(json_file, 'r') as fh:
             j = json.loads(fh.read())
