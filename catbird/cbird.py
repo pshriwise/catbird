@@ -47,11 +47,14 @@ class Catbird:
         setattr(self.__class__, '_'+attr_name, None)
 
         # set attribute docstring
+        doc_str = ''
         if desc is not None:
-            getattr(self.__class__, attr_name).__doc__ = desc
+            doc_str += desc
         if allowed_vals is not None:
-            getattr(self.__class__, attr_name).__doc__ += f'\nValues: {allowed_vals}'
+            doc_str += f'\nValues: {allowed_vals}'
 
+        if doc_str:
+            getattr(self.__class__, attr_name).__doc__ = doc_str
 
     @classmethod
     def from_json(cls, json_file):
