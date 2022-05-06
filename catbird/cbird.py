@@ -46,8 +46,11 @@ class Catbird:
         setattr(self.__class__, attr_name, prop)
         setattr(self.__class__, '_'+attr_name, None)
 
+        # set attribute docstring
         if desc is not None:
             getattr(self.__class__, attr_name).__doc__ = desc
+        if allowed_vals is not None:
+            getattr(self.__class__, attr_name).__doc__ += f'\nValues: {allowed_vals}'
 
 
     @classmethod
