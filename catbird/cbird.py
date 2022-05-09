@@ -14,7 +14,6 @@ class Catbird(ABC):
     a given app.
     """
 
-    @abstractmethod
     def __init__(self):
         pass
 
