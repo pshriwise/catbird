@@ -1,3 +1,5 @@
+from abc import ABC
+
 import json
 
 type_mapping = {'Integer' : int,
@@ -6,13 +8,19 @@ type_mapping = {'Integer' : int,
                 'String' : str}
 
 
-class Catbird:
+class Catbird(ABC):
+    """
+    Class for creation of Python objects representing available MOOSE blocks for
+    a given app.
+    """
 
+    @abstractmethod
     def __init__(self):
         pass
 
     @staticmethod
     def check_type(name, val, attr_type):
+        """Checks a value's type"""
         if not isinstance(val, attr_type):
             val_type_str = val.__class__.__name__
             exp_type_str = attr_type.__name__
@@ -21,16 +29,19 @@ class Catbird:
 
     @staticmethod
     def check_vals(name, val, allowed_vals):
+        """Checks that a value is in the set of allowed_values"""
         if val not in allowed_vals:
             raise ValueError(f'Value {val} for attribute {name} is not one of {allowed_vals}')
 
     def prop_get(self, name):
+        """Returns function for getting an attribute"""
         def fget(self):
             value = getattr(self, '_'+name)
             return value
         return fget
 
     def prop_set(self, name, attr_type, allowed_vals=None):
+        """Returns a function for setting an attribute"""
         def fset(self, val):
             self.check_type(name, val, attr_type)
             if allowed_vals is not None:
@@ -39,6 +50,7 @@ class Catbird:
         return fset
 
     def newattr(self, attr_name, attr_type=str, allowed_vals=None, desc=None):
+        """Adds a property to the class"""
         if not isinstance(attr_name, str):
             raise ValueError('Attributes must be strings')
         prop = property(fget=self.prop_get(attr_name),
@@ -58,7 +70,7 @@ class Catbird:
 
     @classmethod
     def from_json(cls, json_file):
-
+        """Creates a class from a JSON block"""
         def convert_to_type(t, val):
             if t == bool:
                 val = bool(int(val))
