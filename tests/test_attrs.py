@@ -37,7 +37,9 @@ def test_attrs():
 
 def test_from_json(request):
 
-    c = Catbird.from_json(request.fspath.dirpath() / 'test.json')
+    probs = Catbird.from_json(request.fspath.dirpath() / 'test.json')
+
+    c = probs['TestProblem']
 
     assert c.assume_separate_tallies == False
     assert c.batch_interval == 1

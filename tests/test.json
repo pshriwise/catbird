@@ -1,54 +1,63 @@
-{"parameters": {
-    "assume_separate_tallies": {
-      "basic_type": "Boolean",
-      "controllable": false,
-      "cpp_type": "bool",
-      "default": "0",
-      "deprecated": false,
-      "description": "Whether to assume that all tallies added by in the XML files and automatically by Cardinal are spatially separate. This is a performance optimization",
-      "group_name": "",
-      "name": "assume_separate_tallies",
-      "options": "",
-      "out_of_range_allowed": false,
-      "required": false
-    },
-    "batch_interval": {
-      "basic_type": "Integer",
-      "controllable": false,
-      "cpp_type": "unsigned int",
-      "default": "1",
-      "deprecated": false,
-      "description": "Trigger batch interval",
-      "group_name": "",
-      "name": "batch_interval",
-      "options": "",
-      "out_of_range_allowed": false,
-      "required": false
-    },
-    "batches": {
-      "basic_type": "Integer",
-      "controllable": false,
-      "cpp_type": "unsigned int",
-      "deprecated": false,
-      "description": "Number of batches to run in OpenMC; this overrides the setting in the XML files.",
-      "group_name": "",
-      "name": "batches",
-      "options": "",
-      "out_of_range_allowed": false,
-      "required": false
-    },
-    "k_trigger": {
-      "basic_type": "String",
-      "controllable": false,
-      "cpp_type": "MooseEnum",
-      "default": "none",
-      "deprecated": false,
-      "description": "Trigger criterion to determine when OpenMC simulation is complete based on k; options: variance, std_dev, rel_err, none (default)",
-      "group_name": "",
-      "name": "k_trigger",
-      "options": "variance std_dev rel_err none",
-      "out_of_range_allowed": false,
-      "required": false
+{
+    "blocks": {
+        "Problem": {
+            "types": {
+                "TestProblem": {
+                    "parameters": {
+                        "assume_separate_tallies": {
+                            "basic_type": "Boolean",
+                            "controllable": false,
+                            "cpp_type": "bool",
+                            "default": "0",
+                            "deprecated": false,
+                            "description": "Whether to assume that all tallies added by in the XML files and automatically by Cardinal are spatially separate. This is a performance optimization",
+                            "group_name": "",
+                            "name": "assume_separate_tallies",
+                            "options": "",
+                            "out_of_range_allowed": false,
+                            "required": false
+                        },
+                        "batch_interval": {
+                            "basic_type": "Integer",
+                            "controllable": false,
+                            "cpp_type": "unsigned int",
+                            "default": "1",
+                            "deprecated": false,
+                            "description": "Trigger batch interval",
+                            "group_name": "",
+                            "name": "batch_interval",
+                            "options": "",
+                            "out_of_range_allowed": false,
+                            "required": false
+                        },
+                        "batches": {
+                            "basic_type": "Integer",
+                            "controllable": false,
+                            "cpp_type": "unsigned int",
+                            "deprecated": false,
+                            "description": "Number of batches to run in OpenMC; this overrides the setting in the XML files.",
+                            "group_name": "",
+                            "name": "batches",
+                            "options": "",
+                            "out_of_range_allowed": false,
+                            "required": false
+                        },
+                        "k_trigger": {
+                            "basic_type": "String",
+                            "controllable": false,
+                            "cpp_type": "MooseEnum",
+                            "default": "none",
+                            "deprecated": false,
+                            "description": "Trigger criterion to determine when OpenMC simulation is complete based on k; options: variance, std_dev, rel_err, none (default)",
+                            "group_name": "",
+                            "name": "k_trigger",
+                            "options": "variance std_dev rel_err none",
+                            "out_of_range_allowed": false,
+                            "required": false
+                        }
+                    }
+                }
+            }
+        }
     }
-  }
 }
