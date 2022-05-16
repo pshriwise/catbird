@@ -103,12 +103,14 @@ class Catbird(ABC):
         instances_out = dict()
 
         for problem, block in problems.items():
+            if block_names is not None and problem not in block_names:
+                continue
+
             params = block['parameters']
 
             # create new subclass of Catbird
             new_cls = type(problem, (cls,), dict())
             inst = new_cls()
-
 
             for param_name, param_info in params.items():
                 # skip array entries for now
