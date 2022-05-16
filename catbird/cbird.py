@@ -5,6 +5,7 @@ import json
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
                 'Float' : float,
+                'Real' : float,
                 'String' : str}
 
 
@@ -68,8 +69,23 @@ class Catbird(ABC):
             getattr(self.__class__, attr_name).__doc__ = doc_str
 
     @classmethod
-    def from_json(cls, json_file):
-        """Creates a class from a JSON block"""
+    def from_json(cls, json_file, block_names=None):
+        """Creates a class from a JSON block
+
+        Parameters
+        ----------
+        json_file : str or Path
+            Location of the json file to read
+        block_names : iterable of str
+            List of block names to generate classes for. If not specified,
+            a class will be generated for every supported block type.
+
+        Returns
+        -------
+        list
+            A list of Catbird classes -- one for each block name specified
+        """
+
         def convert_to_type(t, val):
             if t == bool:
                 val = bool(int(val))
@@ -77,32 +93,44 @@ class Catbird(ABC):
                 val = t(val)
             return val
 
-        # create new subclass of Catbird
-        new_cls = type('cardinal', (cls,), dict())
-        inst = new_cls()
-
         with open(json_file, 'r') as fh:
             j = json.loads(fh.read())
 
-        # get "parameters" block
 
-        params = j['parameters']
+        # get problems block
+        problems = j['blocks']['Problem']['types']
 
-        for param_name, param_info in params.items():
-            attr_type = type_mapping[param_info['basic_type']]
+        instances_out = dict()
 
-            allowed_values = None
-            if param_info['options']:
-                values = param_info['options'].split()
-                allowed_values = [convert_to_type(attr_type, v) for v in values]
+        for problem, block in problems.items():
+            params = block['parameters']
 
-            inst.newattr(param_name,
-                         attr_type,
-                         desc=param_info.get('description'),
-                         allowed_vals=allowed_values)
+            # create new subclass of Catbird
+            new_cls = type(problem, (cls,), dict())
+            inst = new_cls()
 
-            if 'default' in param_info and param_info['default'] != 'none':
-                val = convert_to_type(attr_type, param_info['default'])
-                setattr(inst, param_name, val)
 
-        return inst
+            for param_name, param_info in params.items():
+                # skip array entries for now
+                if 'Array' in param_info['basic_type']:
+                    continue
+
+                attr_type = type_mapping[param_info['basic_type']]
+
+                allowed_values = None
+                if param_info['options']:
+                    values = param_info['options'].split()
+                    allowed_values = [convert_to_type(attr_type, v) for v in values]
+
+                inst.newattr(param_name,
+                             attr_type,
+                             desc=param_info.get('description'),
+                             allowed_vals=allowed_values)
+
+                if 'default' in param_info and param_info['default'] != 'none':
+                    val = convert_to_type(attr_type, param_info['default'])
+                    setattr(inst, param_name, val)
+
+            instances_out[problem] = inst
+
+        return instances_out
