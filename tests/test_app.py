@@ -20,3 +20,6 @@ def test_app():
 
     assert omc.default_ghosting == False
     assert omc.k_trigger == None
+
+if __name__ == "__main__":
+    pytest.main()
