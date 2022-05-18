@@ -2,11 +2,22 @@ from abc import ABC
 
 import json
 
+
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
                 'Float' : float,
                 'Real' : float,
-                'String' : str}
+                'String' : str,
+                'Array': list}
+
+
+# convenience function for converting types
+def _convert_to_type(t, val):
+    if t == bool:
+        val = bool(int(val))
+    else:
+        val = t(val)
+    return val
 
 
 class Catbird(ABC):
@@ -82,57 +93,58 @@ class Catbird(ABC):
 
         Returns
         -------
-        list
-            A list of Catbird classes -- one for each block name specified
+        dict
+            Dictionary of classes with their names as values and instances as values
         """
 
-        def convert_to_type(t, val):
-            if t == bool:
-                val = bool(int(val))
-            else:
-                val = t(val)
-            return val
-
+        # open the json file
         with open(json_file, 'r') as fh:
             j = json.loads(fh.read())
-
 
         # get problems block
         problems = j['blocks']['Problem']['types']
 
+        #
         instances_out = dict()
 
         for problem, block in problems.items():
+            # skip any blocks that we aren't looking for
             if block_names is not None and problem not in block_names:
                 continue
 
             params = block['parameters']
 
-            # create new subclass of Catbird
+            # create new subclass of Catbird with a name that matches the problem
             new_cls = type(problem, (cls,), dict())
             inst = new_cls()
 
+            # loop over the problem parameters
             for param_name, param_info in params.items():
                 # skip array entries for now
                 if 'Array' in param_info['basic_type']:
                     continue
 
+                # determine the type of the parameter
                 attr_type = type_mapping[param_info['basic_type']]
 
+                # set allowed values if present
                 allowed_values = None
                 if param_info['options']:
                     values = param_info['options'].split()
-                    allowed_values = [convert_to_type(attr_type, v) for v in values]
+                    allowed_values = [_convert_to_type(attr_type, v) for v in values]
 
+                # add an attribute to the class instance for this parameter
                 inst.newattr(param_name,
                              attr_type,
                              desc=param_info.get('description'),
                              allowed_vals=allowed_values)
 
+                # apply the default value if provided
                 if 'default' in param_info and param_info['default'] != 'none':
-                    val = convert_to_type(attr_type, param_info['default'])
+                    val = _convert_to_type(attr_type, param_info['default'])
                     setattr(inst, param_name, val)
 
+            # insert new instance into the output dictionary
             instances_out[problem] = inst
 
         return instances_out
