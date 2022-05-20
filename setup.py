@@ -10,6 +10,7 @@ kwargs = {
     'author_email': 'pshriwise@gmail.com',
     'download_url': 'https://github.com/pshriwise/catbird',
     'python_requires': '>=3.6',
+    'install_requires': ['numpy'],
     'extras_require': {
         'test': ['pytest']
     }
