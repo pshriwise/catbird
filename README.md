@@ -9,6 +9,7 @@ Prerequisites
 -------------
 
   - Python version >=3.6
+  - [NumPy](https://numpy.org/)
   - `pytest` (for testing)
 
 Installation
