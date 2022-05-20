@@ -48,6 +48,8 @@ def test_attrs():
 
     c.ndarr = [[10.0, 10.0, 10.0],]
 
+    with pytest.raises(ValueError) as e:
+        c.ndarr = [10.0, 10.0, 10.0]
 
 if __name__ == '__main__':
     pytest.main()
