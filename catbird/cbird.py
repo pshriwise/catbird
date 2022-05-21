@@ -37,7 +37,8 @@ class Catbird(ABC):
         if not isinstance(val, attr_type):
             val_type_str = val.__class__.__name__
             exp_type_str = attr_type.__name__
-            raise ValueError(f'Incorrect type {val_type_str} for attribute {name}. Expected type {exp_type_str}.')
+            raise ValueError(f'Incorrect type "{val_type_str}" for attribute "{name}". '
+                             f'Expected type "{exp_type_str}".')
         return val
 
     @staticmethod
@@ -82,7 +83,7 @@ class Catbird(ABC):
         setattr(self.__class__, '_'+attr_name, None)
 
         # set attribute docstring
-        doc_str = ''
+        doc_str = f'\nType: {attr_type.__name__}\n'
         if desc is not None:
             doc_str += desc
         if allowed_vals is not None:
