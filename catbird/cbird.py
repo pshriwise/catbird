@@ -2,6 +2,7 @@ from abc import ABC
 from collections.abc import Iterable
 import json
 import numpy as np
+import subprocess
 
 
 type_mapping = {'Integer' : int,
@@ -110,10 +111,40 @@ class Catbird(ABC):
 
         # open the json file
         with open(json_file, 'r') as fh:
-            j = json.loads(fh.read())
+            j_obj = json.loads(fh.read())
 
+        return cls.from_json_obj(j_obj, block_names)
+
+    @classmethod
+    def from_executable(cls, exec, block_names=None):
+        """
+        Generate objects from a MOOSE executable
+        """
+
+        json_proc = subprocess.Popen([exec, '--json'], stdout=subprocess.PIPE)
+        json_str = ''
+
+        # filter out the header and footer from the json data
+        while True:
+            line = json_proc.stdout.readline().decode()
+            if not line:
+                break
+            if '**START JSON DATA**' in line:
+                continue
+            if '**END JSON DATA**' in line:
+                continue
+
+            json_str += line
+
+        j_obj = json.loads(json_str)
+
+
+        return cls.from_json_obj(j_obj, block_names)
+
+    @classmethod
+    def from_json_obj(cls, json_obj, block_names=None):
         # get problems block
-        problems = j['blocks']['Problem']['types']
+        problems = json_obj['blocks']['Problem']['types']
 
         #
         instances_out = dict()
