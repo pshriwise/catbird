@@ -1,11 +1,11 @@
 
 import pytest
 
-from catbird import Catbird
+from catbird import app_from_json
 
 def test_from_json(request):
 
-    probs = Catbird.from_json(request.fspath.dirpath() / 'test.json')
+    probs = app_from_json(request.fspath.dirpath() / 'test.json')
 
     c = probs['TestProblem']
 

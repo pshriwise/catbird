@@ -2,6 +2,7 @@ from abc import ABC
 from collections.abc import Iterable
 import json
 import numpy as np
+from pathlib import Path
 import subprocess
 
 
@@ -24,8 +25,7 @@ def _convert_to_type(t, val):
 
 class Catbird(ABC):
     """
-    Class for creation of Python objects representing available MOOSE blocks for
-    a given app.
+    Class that can add type-checked properties to itself.
     """
 
     def __init__(self):
@@ -92,112 +92,123 @@ class Catbird(ABC):
         if doc_str:
             getattr(self.__class__, attr_name).__doc__ = doc_str
 
-    @classmethod
-    def from_json(cls, json_file, block_names=None):
-        """Creates a class from a JSON block
 
-        Parameters
-        ----------
-        json_file : str or Path
-            Location of the json file to read
-        block_names : iterable of str
-            List of block names to generate classes for. If not specified,
-            a class will be generated for every supported block type.
+def app_from_json(json_file, problem_names=None):
+    """
+    Returns the Python objects corresponding to the MOOSE application described
+    by the json file.
 
-        Returns
-        -------
-        dict
-            Dictionary of classes with their names as values and instances as values
-        """
+    Parameters
+    ----------
+    json_file : dict, str, or Path
+        Either an open file handle, or a path to the json file. If `json` is a
+        dict, it is assumed this is a pre-parsed json object.
+    problems : Iterable of str
+        Set of problems to generate classes for
 
-        # open the json file
-        with open(json_file, 'r') as fh:
-            j_obj = json.loads(fh.read())
+    Returns
+    -------
+    dict
+        A dictionary of problem objects
+    """
 
-        return cls.from_json_obj(j_obj, block_names)
+    if isinstance(json, dict):
+        json_obj = json_file
+    else:
+        json_obj = json.load(json_file)
 
-    @classmethod
-    def from_executable(cls, exec, block_names=None):
-        """
-        Generate objects from a MOOSE executable
-        """
+    # get problems block
+    problems = json_obj['blocks']['Problem']['types']
 
-        json_proc = subprocess.Popen([exec, '--json'], stdout=subprocess.PIPE)
-        json_str = ''
+    #
+    instances_out = dict()
 
-        # filter out the header and footer from the json data
-        while True:
-            line = json_proc.stdout.readline().decode()
-            if not line:
-                break
-            if '**START JSON DATA**' in line:
-                continue
-            if '**END JSON DATA**' in line:
-                continue
+    for problem, block in problems.items():
+        # skip any blocks that we aren't looking for
+        if problem_names is not None and problem not in problem_names:
+            continue
 
-            json_str += line
+        params = block['parameters']
 
-        j_obj = json.loads(json_str)
+        # create new subclass of Catbird with a name that matches the problem
+        new_cls = type(problem, (Catbird,), dict())
+        inst = new_cls()
 
+        # loop over the problem parameters
+        for param_name, param_info in params.items():
+            # determine the type of the parameter
+            attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
+            attr_type = attr_types[-1]
 
-        return cls.from_json_obj(j_obj, block_names)
+            if len(attr_types) > 1:
+                for t in attr_types[:-1]:
+                    assert issubclass(t, Iterable)
+                ndim = len(attr_types) - 1
+            else:
+                ndim = 0
 
-    @classmethod
-    def from_json_obj(cls, json_obj, block_names=None):
-        # get problems block
-        problems = json_obj['blocks']['Problem']['types']
+            # set allowed values if present
+            allowed_values = None
+            if param_info['options']:
+                values = param_info['options'].split()
+                allowed_values = [_convert_to_type(attr_type, v) for v in values]
 
-        #
-        instances_out = dict()
+            # add an attribute to the class instance for this parameter
+            inst.newattr(param_name,
+                            attr_type,
+                            desc=param_info.get('description'),
+                            dim=ndim,
+                            allowed_vals=allowed_values)
 
-        for problem, block in problems.items():
-            # skip any blocks that we aren't looking for
-            if block_names is not None and problem not in block_names:
-                continue
+            # apply the default value if provided
+            if 'default' in param_info and param_info['default'] != 'none':
+                # only supporting defaults for one dimensional dim types
+                vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
 
-            params = block['parameters']
-
-            # create new subclass of Catbird with a name that matches the problem
-            new_cls = type(problem, (cls,), dict())
-            inst = new_cls()
-
-            # loop over the problem parameters
-            for param_name, param_info in params.items():
-                # determine the type of the parameter
-                attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
-                attr_type = attr_types[-1]
-
-                if len(attr_types) > 1:
-                    for t in attr_types[:-1]:
-                        assert issubclass(t, Iterable)
-                    ndim = len(attr_types) - 1
+                if ndim == 0:
+                    setattr(inst, param_name, vals[0])
                 else:
-                    ndim = 0
+                    setattr(inst, param_name, np.array(vals))
 
-                # set allowed values if present
-                allowed_values = None
-                if param_info['options']:
-                    values = param_info['options'].split()
-                    allowed_values = [_convert_to_type(attr_type, v) for v in values]
+        # insert new instance into the output dictionary
+        instances_out[problem] = inst
 
-                # add an attribute to the class instance for this parameter
-                inst.newattr(param_name,
-                             attr_type,
-                             desc=param_info.get('description'),
-                             dim=ndim,
-                             allowed_vals=allowed_values)
+    return instances_out
 
-                # apply the default value if provided
-                if 'default' in param_info and param_info['default'] != 'none':
-                    # only supporting defaults for one dimensional dim types
-                    vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
 
-                    if ndim == 0:
-                        setattr(inst, param_name, vals[0])
-                    else:
-                        setattr(inst, param_name, np.array(vals))
+def app_from_exec(exec, problem_names=None):
+    """
+    Returns the Python objects corresponding to the MOOSE
+    application described by the json file.
 
-            # insert new instance into the output dictionary
-            instances_out[problem] = inst
+    Parameters
+    ----------
+    json : str or Path
+        Path to the MOOSE executable
+    problems : Iterable of str
+        Set of problems to generate classes for
 
-        return instances_out
+    Returns
+    -------
+    dict
+        A dictionary of problem objects
+    """
+
+    json_proc = subprocess.Popen([exec, '--json'], stdout=subprocess.PIPE)
+    json_str = ''
+
+    # filter out the header and footer from the json data
+    while True:
+        line = json_proc.stdout.readline().decode()
+        if not line:
+            break
+        if '**START JSON DATA**' in line:
+            continue
+        if '**END JSON DATA**' in line:
+            continue
+
+        json_str += line
+
+    j_obj = json.loads(json_str)
+
+    return app_from_json(j_obj, problem_names=problem_names)
