@@ -7,7 +7,7 @@ def test_from_json(request):
 
     probs = app_from_json(request.fspath.dirpath() / 'test.json')
 
-    c = probs['TestProblem']
+    c = probs['problems']['TestProblem']
 
     assert c.assume_separate_tallies == False
     assert c.batch_interval == 1

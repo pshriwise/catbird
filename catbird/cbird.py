@@ -117,6 +117,14 @@ def app_from_json(json_file, problem_names=None):
     else:
         json_obj = json.load(json_file)
 
+    out = dict()
+
+    out['problems'] = parse_problems(json_obj, problem_names=problem_names)
+
+    return out
+
+
+def parse_problems(json_obj, problem_names=None):
     # get problems block
     problems = json_obj['blocks']['Problem']['types']
 
