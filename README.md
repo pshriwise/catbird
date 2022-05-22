@@ -5,7 +5,7 @@ Catbird
 
 A code for generation of Python objects and input for various [MOOSE](https://moose.inl.gov/SitePages/Home.aspx).
 
-*Caveats: This currently only parses data for the `MooseProblem` type.*
+*Caveats: This currently only parses data for the `MOOSE::Problem` type.*
 
 Prerequisites
 -------------
@@ -35,11 +35,11 @@ Example
 Below is an example generating Python classes for the `OpenMCCellAverageProblem` and `NekRSProblem` types in the [Cardinal](https://cardinal.cels.anl.gov/).
 
 ```python
-In [1]: from catbird import Catbird
+In [1]: from catbird import app_from_exec
 
-In [2]: cardinal_probs = Catbird.from_executable('./cardinal-opt', block_names=['OpenMCCellAverageProblem', 'NekRSProblem'])
+In [2]: cardinal = app_from_exec('./cardinal-opt', problem_names=['OpenMCCellAverageProblem', 'NekRSProblem'])
 
-In [3]: openmc_prob = cardinal_probs['OpenMCCellAverageProblem']
+In [3]: openmc_prob = cardinal['problems']['OpenMCCellAverageProblem']
 
 In [4]: openmc_prob.batches?
 Type:        property
