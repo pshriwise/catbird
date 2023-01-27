@@ -112,7 +112,7 @@ def app_from_json(json_file, problem_names=None):
         A dictionary of problem objects
     """
 
-    if isinstance(json, dict):
+    if isinstance(json_file, dict):
         json_obj = json_file
     else:
         json_obj = json.load(json_file)
@@ -163,10 +163,10 @@ def parse_problems(json_obj, problem_names=None):
 
             # add an attribute to the class instance for this parameter
             inst.newattr(param_name,
-                            attr_type,
-                            desc=param_info.get('description'),
-                            dim=ndim,
-                            allowed_vals=allowed_values)
+                         attr_type,
+                         desc=param_info.get('description'),
+                         dim=ndim,
+                         allowed_vals=allowed_values)
 
             # apply the default value if provided
             if 'default' in param_info and param_info['default'] != 'none':
