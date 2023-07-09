@@ -8,7 +8,7 @@ def test_pyhit_node(request):
     json_file = request.fspath.dirpath() / 'openmc.json'
     app = app_from_json(json_file)
 
-    omc = app['problems']['OpenMCCellAverageProblem']
+    omc = app['problems']['OpenMCCellAverageProblem']()
 
     node = omc.to_node()
 

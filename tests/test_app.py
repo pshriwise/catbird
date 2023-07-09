@@ -8,7 +8,7 @@ def test_app(request):
     json_file = request.fspath.dirpath() / 'openmc.json'
     app = app_from_json(json_file)
 
-    omc = app['problems']['OpenMCCellAverageProblem']
+    omc = app['problems']['OpenMCCellAverageProblem']()
 
     # test type-checking
     with pytest.raises(ValueError) as e:

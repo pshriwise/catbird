@@ -47,21 +47,26 @@ class Catbird(ABC):
         if val not in allowed_vals:
             raise ValueError(f'Value {val} for attribute {name} is not one of {allowed_vals}')
 
-    def prop_get(self, name):
+    @staticmethod
+    def prop_get(name, default=None):
         """Returns function for getting an attribute"""
         def fget(self):
+            # set to the default value if the internal attribute doesn't exist
+            if not hasattr(self, '_'+name):
+                setattr(self, '_'+name, default)
             value = getattr(self, '_'+name)
             return value
         return fget
 
-    def prop_set(self, name, attr_type, dim=0, allowed_vals=None):
+    @staticmethod
+    def prop_set(name, attr_type, dim=0, allowed_vals=None):
         """Returns a function for setting an attribute"""
         def fset(self, val):
             if dim == 0:
                 self.check_type(name, val, attr_type)
                 if allowed_vals is not None:
                     self.check_vals(name, val, allowed_vals)
-                setattr(self.__class__, '_'+name, val)
+                setattr(self, '_'+name, val)
             else:
                 val = np.asarray(val)
                 self.check_type(name, val.flat[0].item(), attr_type)
@@ -70,17 +75,18 @@ class Catbird(ABC):
                 for v in val.flatten():
                     if allowed_vals is not None:
                         self.check_vals(name, v, allowed_vals)
-                setattr(self.__class__, '_'+name, val)
+                setattr(self, '_'+name, val)
+            # self.__moose_attrs__ += [name]
         return fset
 
-    def newattr(self, attr_name, attr_type=str, dim=0, allowed_vals=None, desc=None):
+    @classmethod
+    def newattr(cls, attr_name, attr_type=str, dim=0, default=None, allowed_vals=None, desc=None):
         """Adds a property to the class"""
         if not isinstance(attr_name, str):
             raise ValueError('Attributes must be strings')
-        prop = property(fget=self.prop_get(attr_name),
-                        fset=self.prop_set(attr_name, attr_type, dim, allowed_vals))
-        setattr(self.__class__, attr_name, prop)
-        setattr(self.__class__, '_'+attr_name, None)
+        prop = property(fget=cls.prop_get(attr_name, default),
+                        fset=cls.prop_set(attr_name, attr_type, dim, allowed_vals))
+        setattr(cls, attr_name, prop)
 
         # set attribute docstring
         doc_str = f'\nType: {attr_type.__name__}\n'
@@ -90,9 +96,7 @@ class Catbird(ABC):
             doc_str += f'\nValues: {allowed_vals}'
 
         if doc_str:
-            getattr(self.__class__, attr_name).__doc__ = doc_str
-
-        self.__moose_attrs__ += [attr_name]
+            getattr(cls, attr_name).__doc__ = doc_str
 
     def to_node(self):
         """
@@ -104,11 +108,11 @@ class Catbird(ABC):
 
         for attr in self.__moose_attrs__:
             val = getattr(self, attr)
-            print(attr, val)
             if val is not None:
                 node[attr] = val
 
         return node
+
 
 def app_from_json(json_file, problem_names=None):
     """
@@ -156,7 +160,7 @@ def parse_problems(json_obj, problem_names=None):
 
         # create new subclass of Catbird with a name that matches the problem
         new_cls = type(problem, (Catbird,), dict())
-        inst = new_cls()
+        inst = new_cls
         inst.name = problem
 
         # loop over the problem parameters
@@ -178,22 +182,25 @@ def parse_problems(json_obj, problem_names=None):
                 values = param_info['options'].split()
                 allowed_values = [_convert_to_type(attr_type, v) for v in values]
 
+            # apply the default value if provided
+            # TODO: default values need to be handled differently. They are replacing
+            # properties in the type definition as they are now
+            default = None
+            if 'default' in param_info and param_info['default'] != 'none':
+                # only supporting defaults for one dimensional dim types
+                vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
+                if ndim == 0:
+                    default = vals[0]
+                else:
+                    default = np.array(vals)
+
             # add an attribute to the class instance for this parameter
             inst.newattr(param_name,
                          attr_type,
                          desc=param_info.get('description'),
+                         default=default,
                          dim=ndim,
                          allowed_vals=allowed_values)
-
-            # apply the default value if provided
-            if 'default' in param_info and param_info['default'] != 'none':
-                # only supporting defaults for one dimensional dim types
-                vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
-
-                if ndim == 0:
-                    setattr(inst, param_name, vals[0])
-                else:
-                    setattr(inst, param_name, np.array(vals))
 
         # insert new instance into the output dictionary
         instances_out[problem] = inst

@@ -26,7 +26,7 @@ def test_attrs():
     with pytest.raises(ValueError) as e:
         c.i = 'fifteen'
 
-    c.newattr('picky', int, 0, [1, 2, 3])
+    c.newattr('picky', int, 0, None, [1, 2, 3])
 
     assert c.picky == None
     c.picky = 1
@@ -35,7 +35,7 @@ def test_attrs():
     with pytest.raises(ValueError) as e:
         c.picky = 5
 
-    c.newattr('arr', int, 1, [10, 11, 12])
+    c.newattr('arr', int, 1, None, [10, 11, 12])
 
     c.arr = [10, 10, 10]
 
