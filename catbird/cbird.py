@@ -29,7 +29,7 @@ class Catbird(ABC):
     """
 
     def __init__(self):
-        pass
+        self.__moose_attrs__ = []
 
     @staticmethod
     def check_type(name, val, attr_type):
@@ -92,6 +92,23 @@ class Catbird(ABC):
         if doc_str:
             getattr(self.__class__, attr_name).__doc__ = doc_str
 
+        self.__moose_attrs__ += [attr_name]
+
+    def to_node(self):
+        """
+        Create a pyhit node for this MOOSE object
+        """
+        import pyhit
+
+        node = pyhit.Node(hitnode=self.name)
+
+        for attr in self.__moose_attrs__:
+            val = getattr(self, attr)
+            print(attr, val)
+            if val is not None:
+                node[attr] = val
+
+        return node
 
 def app_from_json(json_file, problem_names=None):
     """
@@ -128,7 +145,6 @@ def parse_problems(json_obj, problem_names=None):
     # get problems block
     problems = json_obj['blocks']['Problem']['types']
 
-    #
     instances_out = dict()
 
     for problem, block in problems.items():
@@ -141,6 +157,7 @@ def parse_problems(json_obj, problem_names=None):
         # create new subclass of Catbird with a name that matches the problem
         new_cls = type(problem, (Catbird,), dict())
         inst = new_cls()
+        inst.name = problem
 
         # loop over the problem parameters
         for param_name, param_info in params.items():
