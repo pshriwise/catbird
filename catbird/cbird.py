@@ -104,7 +104,7 @@ class Catbird(ABC):
         """
         import pyhit
 
-        node = pyhit.Node(hitnode=self.name)
+        node = pyhit.Node(hitnode=self.__class__.__name__)
 
         for attr in self.__moose_attrs__:
             val = getattr(self, attr)
@@ -160,8 +160,6 @@ def parse_problems(json_obj, problem_names=None):
 
         # create new subclass of Catbird with a name that matches the problem
         new_cls = type(problem, (Catbird,), dict())
-        inst = new_cls
-        inst.name = problem
 
         # loop over the problem parameters
         for param_name, param_info in params.items():
@@ -195,7 +193,7 @@ def parse_problems(json_obj, problem_names=None):
                     default = np.array(vals)
 
             # add an attribute to the class instance for this parameter
-            inst.newattr(param_name,
+            new_cls.newattr(param_name,
                          attr_type,
                          desc=param_info.get('description'),
                          default=default,
@@ -203,7 +201,7 @@ def parse_problems(json_obj, problem_names=None):
                          allowed_vals=allowed_values)
 
         # insert new instance into the output dictionary
-        instances_out[problem] = inst
+        instances_out[problem] = new_cls
 
     return instances_out
 
