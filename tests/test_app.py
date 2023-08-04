@@ -8,7 +8,7 @@ def test_app(request):
     json_file = request.fspath.dirpath() / 'openmc.json'
     app = AppManager.from_json(json_file)
 
-    omc = app['problems']['OpenMCCellAverageProblem']()
+    omc = app.create_instance('OpenMCCellAverageProblem')
 
     # test type-checking
     with pytest.raises(ValueError) as e:
@@ -24,11 +24,10 @@ def test_app(request):
 
 
 def test_null_load(request):
-
     json_file = request.fspath.dirpath() / 'openmc.json'
-    app = AppManager.from_json(json_file, problem_names=[])
+    app = AppManager.from_json(json_file, block_names=[])
 
-    assert app == dict(problems=dict())
+    assert app._blocks == dict()
 
 
 if __name__ == "__main__":

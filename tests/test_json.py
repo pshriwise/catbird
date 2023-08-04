@@ -7,7 +7,7 @@ def test_from_json(request):
 
     probs = AppManager.from_json(request.fspath.dirpath() / 'test.json')
 
-    c = probs['problems']['TestProblem']()
+    c = probs.create_instance('TestProblem')
 
     assert c.assume_separate_tallies == False
     assert c.batch_interval == 1

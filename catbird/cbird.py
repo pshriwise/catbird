@@ -124,40 +124,19 @@ def nested_dict_iter(d):
 
 
 class AppManager:
+    """
+    A class that manages new block class generation and file I/O
 
-    def __init__(self):
-        pass
+    Parameters
+    ----------
+    blocks : dict
+        A dictionary with block names as keys and the corresponding Catbird block types as values
+    """
+    def __init__(self, blocks : dict = {}):
+        self._blocks = blocks
 
-    @classmethod
-    def from_json(cls, json_file, problem_names=None):
-        """
-        Returns the Python objects corresponding to the MOOSE application described
-        by the json file.
-
-        Parameters
-        ----------
-        json_file : dict, str, or Path
-            Either an open file handle, or a path to the json file. If `json` is a
-            dict, it is assumed this is a pre-parsed json object.
-        problems : Iterable of str
-            Set of problems to generate classes for
-
-        Returns
-        -------
-        dict
-            A dictionary of problem objects
-        """
-
-        if isinstance(json_file, dict):
-            json_obj = json_file
-        else:
-            json_obj = json.load(json_file)
-
-        out = dict()
-
-        out['problems'] = cls.parse_problems(json_obj, problem_names=problem_names)
-
-        return out
+    def create_instance(self, object_name):
+        return self._blocks[object_name]()
 
     @staticmethod
     def _parse_default_value(obj_name, param_name, attr_type, ndim, param_info):
@@ -178,24 +157,24 @@ class AppManager:
         return None
 
     @staticmethod
-    def parse_problems(json_obj, problem_names=None):
+    def parse_problems(json_obj, block_names=None):
         instances_out = dict()
 
-        for problem, block in nested_dict_iter(json_obj['blocks']):
+        for block_name, block in nested_dict_iter(json_obj['blocks']):
             # skip any blocks that we aren't looking for
-            if problem_names is not None and problem not in problem_names:
+            if block_names is not None and block_name not in block_names:
                 continue
 
             if not isinstance(block, dict) or 'parameters' not in block or 'basic_type' in block['parameters']:
                 continue
 
             params = block['parameters']
-            # create new subclass of Catbird with a name that matches the problem
-            new_cls = type(problem, (Catbird,), dict())
+            # create new subclass of Catbird with a name that matches the block_name
+            new_cls = type(block_name, (Catbird,), dict())
             if 'description' in block:
                 new_cls.__doc__ = block['description']
 
-            # loop over the problem parameters
+            # loop over the block_name parameters
             for param_name, param_info in params.items():
                 # determine the type of the parameter
                 attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
@@ -217,7 +196,7 @@ class AppManager:
                 # apply the default value if provided
                 # TODO: default values need to be handled differently. They are replacing
                 # properties in the type definition as they are now
-                default = AppManager._parse_default_value(problem, param_name, attr_type, ndim, param_info)
+                default = AppManager._parse_default_value(block_name, param_name, attr_type, ndim, param_info)
 
                 # add an attribute to the class instance for this parameter
                 new_cls.newattr(param_name,
@@ -228,22 +207,22 @@ class AppManager:
                                 allowed_vals=allowed_values)
 
             # insert new instance into the output dictionary
-            instances_out[problem] = new_cls
+            instances_out[block_name] = new_cls
 
         return instances_out
 
     @classmethod
-    def from_exec(cls, exec, problem_names=None):
+    def from_exec(cls, exec, block_names=None):
         """
         Returns the Python objects corresponding to the MOOSE
         application described by the json file.
 
         Parameters
         ----------
-        json : str or Path
+        exec : str or Path
             Path to the MOOSE executable
-        problems : Iterable of str
-            Set of problems to generate classes for
+        block_names : Iterable of str
+            Set of objects to generate classes for
 
         Returns
         -------
@@ -268,4 +247,33 @@ class AppManager:
 
         j_obj = json.loads(json_str)
 
-        return cls.from_json(j_obj, problem_names=problem_names)
+        return cls.from_json(j_obj, problem_names=block_names)
+
+    @classmethod
+    def from_json(cls, json_file, block_names=None):
+        """
+        Returns the Python objects corresponding to the MOOSE application described
+        by the json file.
+
+        Parameters
+        ----------
+        json_file : dict, str, or Path
+            Either an open file handle, or a path to the json file. If `json` is a
+            dict, it is assumed this is a pre-parsed json object.
+        block_names : Iterable of str
+            Set of problems to generate classes for
+
+        Returns
+        -------
+        dict
+            A dictionary of problem objects
+        """
+
+        if isinstance(json_file, dict):
+            json_obj = json_file
+        else:
+            json_obj = json.load(json_file)
+
+        blocks = cls.parse_problems(json_obj, block_names=block_names)
+
+        return cls(blocks)
