@@ -132,7 +132,9 @@ class AppManager:
     blocks : dict
         A dictionary with block names as keys and the corresponding Catbird block types as values
     """
-    def __init__(self, blocks : dict = {}):
+    def __init__(self, blocks=None):
+        if blocks is not None and blocks:
+            assert 1 == len(set(type(v) for v in blocks.values()))
         self._blocks = blocks
 
     def create_instance(self, object_name):
@@ -247,7 +249,7 @@ class AppManager:
 
         j_obj = json.loads(json_str)
 
-        return cls.from_json(j_obj, problem_names=block_names)
+        return cls.from_json(j_obj, block_names=block_names)
 
     @classmethod
     def from_json(cls, json_file, block_names=None):
@@ -277,3 +279,22 @@ class AppManager:
         blocks = cls.parse_problems(json_obj, block_names=block_names)
 
         return cls(blocks)
+
+    def write_input(self, object_blocks, filename='input.i'):
+        """
+        Write a set of CatBird classes from
+
+        Parameters
+        ----------
+        object_blocks : Iterable of Catbird
+            Object blocks to write to to the resulting input file
+        filename : str
+            Path to the resulting input file
+        """
+        import pyhit
+        root_node = pyhit.Node()
+
+        for block in object_blocks:
+            root_node[block.name] = object_blocks.to_node()
+
+        root_node.write(filename, root_node)
