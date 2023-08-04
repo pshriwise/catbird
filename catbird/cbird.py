@@ -1,9 +1,10 @@
 from abc import ABC
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 import json
 import numpy as np
 from pathlib import Path
 import subprocess
+import warnings
 
 
 type_mapping = {'Integer' : int,
@@ -144,6 +145,29 @@ def app_from_json(json_file, problem_names=None):
 
     return out
 
+def nested_dict_iter(d):
+    for a, b in d.items():
+        yield (a, b)
+        if isinstance(b, Mapping):
+          for i in nested_dict_iter(b):
+              yield i
+
+def parse_default_value(obj_name, param_name, attr_type, ndim, param_info):
+    if ndim > 1:
+        return None
+    try:
+        if 'default' in param_info and param_info['default'] != 'none':
+            # only supporting defaults for one dimensional dim types
+            vals = [_convert_to_type(attr_type, v) for v in str(param_info['default']).split()]
+            if not vals:
+                return None
+            elif ndim == 0:
+                return vals[0]
+            else:
+                return np.array(vals)
+    except:
+        warnings.warn(f'Failed to parse default value for parameter: {obj_name}.{param_name}')
+    return None
 
 def parse_problems(json_obj, problem_names=None):
     # get problems block
@@ -151,13 +175,15 @@ def parse_problems(json_obj, problem_names=None):
 
     instances_out = dict()
 
-    for problem, block in problems.items():
+    for problem, block in nested_dict_iter(json_obj['blocks']):
         # skip any blocks that we aren't looking for
         if problem_names is not None and problem not in problem_names:
             continue
 
-        params = block['parameters']
+        if not isinstance(block, dict) or 'parameters' not in block or 'basic_type' in block['parameters']:
+            continue
 
+        params = block['parameters']
         # create new subclass of Catbird with a name that matches the problem
         new_cls = type(problem, (Catbird,), dict())
 
@@ -183,22 +209,15 @@ def parse_problems(json_obj, problem_names=None):
             # apply the default value if provided
             # TODO: default values need to be handled differently. They are replacing
             # properties in the type definition as they are now
-            default = None
-            if 'default' in param_info and param_info['default'] != 'none':
-                # only supporting defaults for one dimensional dim types
-                vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
-                if ndim == 0:
-                    default = vals[0]
-                else:
-                    default = np.array(vals)
+            default = parse_default_value(problem, param_name, attr_type, ndim, param_info)
 
             # add an attribute to the class instance for this parameter
             new_cls.newattr(param_name,
-                         attr_type,
-                         desc=param_info.get('description'),
-                         default=default,
-                         dim=ndim,
-                         allowed_vals=allowed_values)
+                            attr_type,
+                            desc=param_info.get('description'),
+                            default=default,
+                            dim=ndim,
+                            allowed_vals=allowed_values)
 
         # insert new instance into the output dictionary
         instances_out[problem] = new_cls
