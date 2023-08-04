@@ -1,12 +1,12 @@
 
 import pytest
 
-from catbird import app_from_json
+from catbird import AppManager
 
 def test_app(request):
 
     json_file = request.fspath.dirpath() / 'openmc.json'
-    app = app_from_json(json_file)
+    app = AppManager.from_json(json_file)
 
     omc = app['problems']['OpenMCCellAverageProblem']()
 
@@ -26,7 +26,7 @@ def test_app(request):
 def test_null_load(request):
 
     json_file = request.fspath.dirpath() / 'openmc.json'
-    app = app_from_json(json_file, problem_names=[])
+    app = AppManager.from_json(json_file, problem_names=[])
 
     assert app == dict(problems=dict())
 
