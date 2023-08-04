@@ -186,6 +186,8 @@ def parse_problems(json_obj, problem_names=None):
         params = block['parameters']
         # create new subclass of Catbird with a name that matches the problem
         new_cls = type(problem, (Catbird,), dict())
+        new_cls.__doc__ = description = block['description']
+
 
         # loop over the problem parameters
         for param_name, param_info in params.items():
