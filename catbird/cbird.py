@@ -216,7 +216,7 @@ def parse_blocks(json_obj):
         Dictionary of available block types organised by category
     """
 
-    # get problems block
+    # Get all top level categories of block
     block_name_list = json_obj['blocks'].keys()
 
     # Systems have a type == None
@@ -277,13 +277,29 @@ def parse_blocks(json_obj):
 
 
 def parse_problems(json_obj, problem_names=None):
-    return parse_fundamental_blocks(json_obj,'Problem',category_names=problem_names)
+    return parse_blocks_types(json_obj,'Problem',category_names=problem_names)
+
+def get_block_types(json_obj,category):
+    block_types=None
+
+    if category not in json_obj['blocks'].keys():
+        msg="Unknown block name {}".format(category)
+        raise RuntimeError(msg)
+
+    if 'types' in json_obj['blocks'][category].keys():
+        block_types =json_obj['blocks'][category]['types']
+    elif 'star' in json_obj['blocks'][category].keys() and 'subblock_types' in json_obj['blocks'][category]['star'].keys():
+        block_types=json_obj['blocks'][category]['star']['subblock_types']
+    else:
+        msg="Catergory {} does not have a type".format(category)
+        raise RuntimeError(msg)
+
+    return block_types
 
 
-def get_fundamental_block_types(json_obj,category):
-    return json_obj['blocks'][category]['types']
 
-def parse_fundamental_blocks(json_obj,category,category_names=None):
+
+def parse_blocks_types(json_obj,category,category_names=None):
     """
     Make python objects out of MOOSE syntax for a fundamental category of block
     (E.g. Executioner, Problem)
@@ -305,11 +321,11 @@ def parse_fundamental_blocks(json_obj,category,category_names=None):
         A dictionary of pythonised MOOSE objects of the given category.
     """
 
-    fundamental_blocks = get_fundamental_block_types(json_obj,category)
+    requested_blocks = get_block_types(json_obj,category)
 
     instances_out = dict()
 
-    for block_type, block_attributes in fundamental_blocks.items():
+    for block_type, block_attributes in requested_blocks.items():
         # skip any blocks that we aren't looking for
         if category_names is not None and block_type not in category_names:
             continue
