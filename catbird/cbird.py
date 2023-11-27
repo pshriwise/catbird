@@ -180,6 +180,82 @@ def problems_from_json(json_file, problem_names=None):
     return out
 
 
+def parse_blocks(json_obj):
+    """
+    Returns the a dictionary of block types corresponding to the MOOSE application described
+    by the json file.
+
+    Parameters
+    ----------
+    json_obj : dict
+        Dictionary of full MOOSE object tree
+
+    Returns
+    -------
+    dict
+        Dictionary of available block types organised by category
+    """
+
+    # get problems block
+    block_name_list = json_obj['blocks'].keys()
+
+    # Systems have a type == None
+    systems=[]
+
+    # Do not have a type, do have a sub-block
+    nested_systems=[]
+
+    # Fundamental blocks are top level-blocks with a type
+    fundamental_blocks={}
+
+    # Blocks which may have many entries, each with a type
+    nested_blocks={}
+
+    types_key='types'
+    wildcard_key='star'
+    nested_key='subblocks'
+    nested_block_key='subblock_types'
+    for block_name in block_name_list:
+        block_dict_now = json_obj['blocks'][block_name]
+        if types_key in block_dict_now.keys():
+            try :
+                # If dict
+                block_types_now = block_dict_now[types_key].keys()
+                fundamental_blocks[block_name]=block_types_now
+            except AttributeError :
+                # Otherwise
+                block_types_now = block_dict_now[types_key]
+                if block_types_now == None:
+                    systems.append(block_name)
+                    continue
+
+            #print(block_name," available types: ", block_types_now)
+        elif wildcard_key in block_dict_now.keys() and nested_block_key in block_dict_now[wildcard_key].keys():
+            try:
+                types_now = block_dict_now[wildcard_key][nested_block_key].keys()
+                nested_blocks[block_name]=types_now
+            except AttributeError :
+                types_now  = block_dict_now[wildcard_key][nested_block_key]
+                if types_now == None:
+                    nested_systems.append(block_name)
+                    continue
+
+        elif nested_key in block_dict_now.keys():
+            nested_systems.append(block_name)
+        else:
+            print(block_name," has keys: ",block_dict_now.keys())
+            raise RuntimeError("unhandled block category")
+
+
+    parsed_block_list={}
+    parsed_block_list["Systems"]=systems
+    parsed_block_list["Nested systems"]=nested_systems
+    parsed_block_list["Fundamental blocks"]=fundamental_blocks
+    parsed_block_list["Nested blocks"]=nested_blocks
+
+    return parsed_block_list
+
+
 def parse_problems(json_obj, problem_names=None):
     # get problems block
     problems = json_obj['blocks']['Problem']['types']
