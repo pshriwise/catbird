@@ -114,7 +114,42 @@ class Catbird(ABC):
         return node
 
 
-def app_from_json(json_file, problem_names=None):
+def json_from_exec(exec):
+    """
+    Returns the Python objects corresponding to the MOOSE application described
+    by the json file.
+
+    Parameters
+    ----------
+    json_file : str, or Path
+        Either an open file handle, or a path to the json file. If `json` is a
+        dict, it is assumed this is a pre-parsed json object.
+
+    Returns
+    -------
+    dict
+        A dictionary of all MOOSE objects
+    """
+    json_proc = subprocess.Popen([exec, '--json'], stdout=subprocess.PIPE)
+    json_str = ''
+
+    # filter out the header and footer from the json data
+    while True:
+        line = json_proc.stdout.readline().decode()
+        if not line:
+            break
+        if '**START JSON DATA**' in line:
+            continue
+        if '**END JSON DATA**' in line:
+            continue
+
+        json_str += line
+
+    j_obj = json.loads(json_str)
+
+    return j_obj
+
+def problems_from_json(json_file, problem_names=None):
     """
     Returns the Python objects corresponding to the MOOSE application described
     by the json file.
@@ -206,15 +241,13 @@ def parse_problems(json_obj, problem_names=None):
     return instances_out
 
 
-def app_from_exec(exec, problem_names=None):
+def problem_from_exec(exec, problem_names=None):
     """
     Returns the Python objects corresponding to the MOOSE
     application described by the json file.
 
     Parameters
     ----------
-    json : str or Path
-        Path to the MOOSE executable
     problems : Iterable of str
         Set of problems to generate classes for
 
@@ -224,21 +257,6 @@ def app_from_exec(exec, problem_names=None):
         A dictionary of problem objects
     """
 
-    json_proc = subprocess.Popen([exec, '--json'], stdout=subprocess.PIPE)
-    json_str = ''
+    j_obj = json_from_exec(exec)
 
-    # filter out the header and footer from the json data
-    while True:
-        line = json_proc.stdout.readline().decode()
-        if not line:
-            break
-        if '**START JSON DATA**' in line:
-            continue
-        if '**END JSON DATA**' in line:
-            continue
-
-        json_str += line
-
-    j_obj = json.loads(json_str)
-
-    return app_from_json(j_obj, problem_names=problem_names)
+    return problems_from_json(j_obj, problem_names=problem_names)
