@@ -149,6 +149,27 @@ def json_from_exec(exec):
 
     return j_obj
 
+def write_json(json_dict_out,name):
+    """
+    Write a dictionary in JSON format
+
+    Parameters
+    ----------
+    json_dict_out : dict
+    name: str
+      Save as name.json
+    """
+    json_output = json.dumps(json_dict_out, indent=4)
+    json_name=name
+    if json_name.find(".json") < 0 :
+        json_name = name+".json"
+
+    with open(json_name, "w") as fh:
+        fh.write(json_output)
+        fh.write("\n")
+    print("Wrote to ",json_name)
+
+
 def problems_from_json(json_file, problem_names=None):
     """
     Returns the Python objects corresponding to the MOOSE application described
@@ -178,7 +199,6 @@ def problems_from_json(json_file, problem_names=None):
     out['problems'] = parse_problems(json_obj, problem_names=problem_names)
 
     return out
-
 
 def parse_blocks(json_obj):
     """
@@ -220,7 +240,7 @@ def parse_blocks(json_obj):
         if types_key in block_dict_now.keys():
             try :
                 # If dict
-                block_types_now = block_dict_now[types_key].keys()
+                block_types_now = list(block_dict_now[types_key].keys())
                 fundamental_blocks[block_name]=block_types_now
             except AttributeError :
                 # Otherwise
@@ -232,7 +252,7 @@ def parse_blocks(json_obj):
             #print(block_name," available types: ", block_types_now)
         elif wildcard_key in block_dict_now.keys() and nested_block_key in block_dict_now[wildcard_key].keys():
             try:
-                types_now = block_dict_now[wildcard_key][nested_block_key].keys()
+                types_now = list(block_dict_now[wildcard_key][nested_block_key].keys())
                 nested_blocks[block_name]=types_now
             except AttributeError :
                 types_now  = block_dict_now[wildcard_key][nested_block_key]
@@ -257,22 +277,52 @@ def parse_blocks(json_obj):
 
 
 def parse_problems(json_obj, problem_names=None):
-    # get problems block
-    problems = json_obj['blocks']['Problem']['types']
+    return parse_fundamental_blocks(json_obj,'Problem',category_names=problem_names)
+
+
+def get_fundamental_block_types(json_obj,category):
+    return json_obj['blocks'][category]['types']
+
+def parse_fundamental_blocks(json_obj,category,category_names=None):
+    """
+    Make python objects out of MOOSE syntax for a fundamental category of block
+    (E.g. Executioner, Problem)
+
+    Parameters
+    ----------
+    json_obj : dict
+        A dictionary of all MOOSE objects
+
+    category: str
+        A string naming the category of fundamental MOOSE block
+
+    category_names: list(str)
+        Optional field. If provided, only return objects for specified types.
+
+    Returns
+    -------
+    dict
+        A dictionary of pythonised MOOSE objects of the given category.
+    """
+
+    fundamental_blocks = get_fundamental_block_types(json_obj,category)
 
     instances_out = dict()
 
-    for problem, block in problems.items():
+    for block_type, block_attributes in fundamental_blocks.items():
         # skip any blocks that we aren't looking for
-        if problem_names is not None and problem not in problem_names:
+        if category_names is not None and block_type not in category_names:
             continue
 
-        params = block['parameters']
+        # Todo add auto-documntations
+        #dict_keys(['description', 'file_info', 'label', 'moose_base', 'parameters', 'parent_syntax', 'register_file', 'syntax_path'])
 
-        # create new subclass of Catbird with a name that matches the problem
-        new_cls = type(problem, (Catbird,), dict())
+        params = block_attributes['parameters']
 
-        # loop over the problem parameters
+        # create new subclass of Catbird with a name that matches the block_type
+        new_cls = type(block_type, (Catbird,), dict())
+
+        # loop over the block_type parameters
         for param_name, param_info in params.items():
             # determine the type of the parameter
             attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
@@ -291,31 +341,31 @@ def parse_problems(json_obj, problem_names=None):
                 values = param_info['options'].split()
                 allowed_values = [_convert_to_type(attr_type, v) for v in values]
 
-            # apply the default value if provided
+                # apply the default value if provided
             # TODO: default values need to be handled differently. They are replacing
             # properties in the type definition as they are now
             default = None
-            if 'default' in param_info and param_info['default'] != 'none':
-                # only supporting defaults for one dimensional dim types
-                vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
-                if ndim == 0:
-                    default = vals[0]
-                else:
-                    default = np.array(vals)
+            if 'default' in param_info.keys() and param_info['default'] != None:
+                default = _convert_to_type(attr_type, param_info['default'])
+                # # only supporting defaults for one dimensional dim types
+                # vals = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
+                # if ndim == 0:
+                #     default = vals[0]
+                # else:
+                #     default = np.array(vals)
 
             # add an attribute to the class instance for this parameter
             new_cls.newattr(param_name,
-                         attr_type,
-                         desc=param_info.get('description'),
-                         default=default,
-                         dim=ndim,
-                         allowed_vals=allowed_values)
+                            attr_type,
+                            desc=param_info.get('description'),
+                            default=default,
+                            dim=ndim,
+                            allowed_vals=allowed_values)
 
         # insert new instance into the output dictionary
-        instances_out[problem] = new_cls
+        instances_out[block_type] = new_cls
 
     return instances_out
-
 
 def problem_from_exec(exec, problem_names=None):
     """
@@ -336,3 +386,8 @@ def problem_from_exec(exec, problem_names=None):
     j_obj = json_from_exec(exec)
 
     return problems_from_json(j_obj, problem_names=problem_names)
+
+def export_all_blocks_from_exec(exec,name):
+    j_obj = json_from_exec(exec)
+    block_dict=parse_blocks(j_obj)
+    write_json(block_dict,name)
