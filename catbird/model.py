@@ -21,3 +21,9 @@ class MooseModel():
             "Problem" : "FEProblem",
         }
         return defaults
+
+    def to_str(self):
+        model_str=""
+        for name, obj in self.objects.items():
+            model_str+=obj.to_str()
+        return model_str

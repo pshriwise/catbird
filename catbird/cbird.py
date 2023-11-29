@@ -31,6 +31,24 @@ class Catbird(ABC):
     def moose_params(self):
         return self._moose_params
 
+    @property
+    def block_name(self):
+        return self._block_name
+
+    @classmethod
+    def set_block_name(self,val):
+        self._block_name=val
+
+    @property
+    def level(self):
+        return self._level
+
+    @classmethod
+    def increment_level(cls):
+        if not hasattr(cls,"_level"):
+            setattr(cls,"_level",0)
+        cls._level+=1
+
     @staticmethod
     def check_type(name, val, attr_type):
         """Checks a value's type"""
@@ -121,8 +139,41 @@ class Catbird(ABC):
 
     #     return node
 
+    @property
+    def indent(self):
+        indent_str=""
+        indent_per_level="  "
+        for i_level in range(0,self.level):
+            indent_str+=indent_per_level
+        return indent_str
+
+    #@staticmethod
+    def attr_to_str(self,attr_name):
+        attr_val = getattr(self, attr_name)
+        attr_str=""
+        if attr_val is not None:
+            attr_val = getattr(self, attr_name)
+            attr_str=self.indent+'{}={}\n'.format(attr_name,attr_val)
+        return attr_str
+
+    def to_str(self):
+        syntax_str='[{}]\n'.format(self.block_name)
+        param_list=self.moose_params
+
+        # Formatting convention, start with type
+        if "type" in  param_list:
+            param_list.remove("type")
+        syntax_str+=self.attr_to_str("type")
+
+        for attr_name in param_list:
+            syntax_str+=self.attr_to_str(attr_name)
+        syntax_str+='[]\n'
+
+        return syntax_str
+
+
     def print_me(self):
-        name=self.__class__.__name__
+        name=self.block_name
         print("Name: ",name)
 
         param_list=self.moose_params
@@ -356,6 +407,9 @@ def parse_blocks_types(json_obj,category,category_names=None):
 
         # create new subclass of Catbird with a name that matches the block_type
         new_cls = type(block_type, (Catbird,), dict())
+
+        new_cls.set_block_name(category)
+        new_cls.increment_level()
 
         # loop over the block_type parameters
         for param_name, param_info in params.items():
