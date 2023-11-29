@@ -27,9 +27,9 @@ class Catbird(ABC):
     """
     Class that can add type-checked properties to itself.
     """
-
-    def __init__(self):
-        self.__moose_attrs__ = []
+    @property
+    def moose_params(self):
+        return self._moose_params
 
     @staticmethod
     def check_type(name, val, attr_type):
@@ -76,7 +76,6 @@ class Catbird(ABC):
                     if allowed_vals is not None:
                         self.check_vals(name, v, allowed_vals)
                 setattr(self, '_'+name, val)
-            # self.__moose_attrs__ += [name]
         return fset
 
     @classmethod
@@ -98,20 +97,42 @@ class Catbird(ABC):
         if doc_str:
             getattr(cls, attr_name).__doc__ = doc_str
 
-    def to_node(self):
-        """
-        Create a pyhit node for this MOOSE object
-        """
-        import pyhit
+        if not hasattr(cls,"_moose_params"):
+            setattr(cls,"_moose_params",[])
+        moose_param_list_local=getattr(cls,"_moose_params")
+        moose_param_list_local.append(attr_name)
+        setattr(cls,"_moose_params",moose_param_list_local)
 
-        node = pyhit.Node(hitnode=self.__class__.__name__)
+    # # Todo - waspify
+    # def to_node(self):
+    #     """
+    #     Create a pyhit node for this MOOSE object
+    #     """
+    #     import pyhit
 
-        for attr in self.__moose_attrs__:
-            val = getattr(self, attr)
-            if val is not None:
-                node[attr] = val
+    #     node = pyhit.Node(hitnode=self.__class__.__name__)
 
-        return node
+    #     for attr in self.__moose_attrs__:
+    #         val = getattr(self, attr)
+
+    #         getattr(self, '_'+name)
+    #         if val is not None:
+    #             node[attr] = val
+
+    #     return node
+
+    def print_me(self):
+        name=self.__class__.__name__
+        print("Name: ",name)
+
+        param_list=self.moose_params
+        for attr_name in param_list:
+            attr_val = getattr(self, attr_name)
+            if attr_val is not None:
+                attr_str="{}.{}: {}".format(name,attr_name,attr_val)
+            else:
+                attr_str="{}.{}: None".format(name,attr_name)
+            print(attr_str)
 
 
 def json_from_exec(exec):
@@ -295,8 +316,6 @@ def get_block_types(json_obj,category):
         raise RuntimeError(msg)
 
     return block_types
-
-
 
 
 def parse_blocks_types(json_obj,category,category_names=None):
