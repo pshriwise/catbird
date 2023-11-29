@@ -13,6 +13,40 @@ type_mapping = {'Integer' : int,
                 'String' : str,
                 'Array' : list}
 
+class SyntaxBlock():
+    def __init__(self, _name, _syntax_type, _known_types):
+        self.name=_name
+        self.syntax_type=_syntax_type
+        self.enabled=False
+        self.enabled_types={}
+        if _known_types is not None:
+            for known_type_name in _known_types:
+                self.enabled_types[known_type_name]=False
+
+        # Store what the default type should be
+        self.default_type=None
+
+    def to_dict(self):
+        syntax_dict={
+            "name": self.name,
+            "syntax_type": self.syntax_type,
+            "enabled": self.enabled,
+            "enabled_types": self.enabled_types,
+        }
+        return syntax_dict
+
+    def enable_from_dict(self,dict_in):
+        self.enabled=dict_in["enabled"]
+        self.enabled_types=dict_in["enabled_types"]
+
+    @property
+    def enabled_subblocks(self):
+        if self.enabled_types is not None:
+            enabled_type_list=[ type_name  for  type_name, enabled in self.enabled_types.items() if enabled ]
+        else:
+            enabled_type_list=None
+        return enabled_type_list
+
 
 # convenience function for converting types
 def _convert_to_type(t, val):
@@ -242,6 +276,20 @@ def write_json(json_dict_out,name):
     print("Wrote to ",json_name)
 
 
+def read_json(json_file):
+    """
+    Load the contents of a JSON file into a dict.
+
+    Parameters
+    ----------
+    json_file: str
+      Name of JSON file
+    """
+    json_dict = {}
+    with open(json_file) as handle:
+        json_dict = json.load(handle)
+    return json_dict
+
 def problems_from_json(json_file, problem_names=None):
     """
     Returns the Python objects corresponding to the MOOSE application described
@@ -291,6 +339,9 @@ def parse_blocks(json_obj):
     # Get all top level categories of block
     block_name_list = json_obj['blocks'].keys()
 
+    #all_syntax=[]
+    parsed_blocks={}
+
     # Systems have a type == None
     systems=[]
 
@@ -303,50 +354,65 @@ def parse_blocks(json_obj):
     # Blocks which may have many entries, each with a type
     nested_blocks={}
 
+
     types_key='types'
     wildcard_key='star'
     nested_key='subblocks'
     nested_block_key='subblock_types'
+
     for block_name in block_name_list:
         block_dict_now = json_obj['blocks'][block_name]
         if types_key in block_dict_now.keys():
             try :
                 # If dict
                 block_types_now = list(block_dict_now[types_key].keys())
-                fundamental_blocks[block_name]=block_types_now
+                #fundamental_blocks[block_name]=block_types_now
+                parsed_blocks[block_name]=SyntaxBlock(block_name,"fundamental",block_types_now)
+
+                #all_syntax.append(SyntaxBlock(block_name,"fundamental",block_types_now))
             except AttributeError :
                 # Otherwise
                 block_types_now = block_dict_now[types_key]
                 if block_types_now == None:
-                    systems.append(block_name)
+                    #systems.append(block_name)
+                    parsed_blocks[block_name]=SyntaxBlock(block_name,"systems",None)
+                    #all_syntax.append(SyntaxBlock(block_name,"systems",None))
                     continue
 
             #print(block_name," available types: ", block_types_now)
         elif wildcard_key in block_dict_now.keys() and nested_block_key in block_dict_now[wildcard_key].keys():
             try:
                 types_now = list(block_dict_now[wildcard_key][nested_block_key].keys())
-                nested_blocks[block_name]=types_now
+                #nested_blocks[block_name]=types_now
+                parsed_blocks[block_name]=SyntaxBlock(block_name,"nested",types_now)
+                #all_syntax.append(SyntaxBlock(block_name,"nested",types_now))
+
             except AttributeError :
                 types_now  = block_dict_now[wildcard_key][nested_block_key]
                 if types_now == None:
-                    nested_systems.append(block_name)
+                    #nested_systems.append(block_name)
+                    #all_syntax.append(SyntaxBlock(block_name,"nested_system",None))
+                    parsed_blocks[block_name]=SyntaxBlock(block_name,"nested_system",None)
                     continue
 
         elif nested_key in block_dict_now.keys():
-            nested_systems.append(block_name)
+            #nested_systems.append(block_name)
+            #all_syntax.append(SyntaxBlock(block_name,"nested_system",None))
+            parsed_blocks[block_name]=SyntaxBlock(block_name,"nested_system",None)
+
         else:
             print(block_name," has keys: ",block_dict_now.keys())
             raise RuntimeError("unhandled block category")
 
 
-    parsed_block_list={}
-    parsed_block_list["Systems"]=systems
-    parsed_block_list["Nested systems"]=nested_systems
-    parsed_block_list["Fundamental blocks"]=fundamental_blocks
-    parsed_block_list["Nested blocks"]=nested_blocks
+    # parsed_block_list={}
+    # parsed_block_list["Systems"]=systems
+    # parsed_block_list["Nested systems"]=nested_systems
+    # parsed_block_list["Fundamental blocks"]=fundamental_blocks
+    # parsed_block_list["Nested blocks"]=nested_blocks
 
-    return parsed_block_list
-
+    #return parsed_block_list
+    return parsed_blocks
 
 def parse_problems(json_obj, problem_names=None):
     return parse_blocks_types(json_obj,'Problem',category_names=problem_names)
