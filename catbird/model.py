@@ -1,4 +1,5 @@
 from .cbird import SyntaxBlock, parse_blocks, parse_blocks_types, read_json, write_json
+from .collection import MOOSECollection
 
 class Factory():
     def __init__(self,json_obj,config_file=None):
@@ -19,16 +20,33 @@ class Factory():
                 msg="Unsupported syntax type {}".format(syntax_type)
                 raise NotImplementedError(msg)
 
-    def construct(obj_type):
-        return self.constructors[obj_type]()
+    def construct(self,obj_type,**kwargs):
+        obj=self.constructors[obj_type]()
 
-    def enable_syntax(self,syntax_name,enabled_types="all"):
+        # Handle keyword arguments
+        for key, value in kwargs.items():
+            if not hasattr(obj,key):
+                msg="Object type {} does not have attribute {}".format(obj_type,key)
+                raise RuntimeError()
+            setattr(obj, key, value)
+
+        return obj
+
+    def enable_syntax(self,syntax_name,default=None,enabled_types="all"):
+        """
+        Configure what MOOSE syntax to enable.
+
+        Objects with enabled syntax will be converted to Python classes.
+        """
+        # Check syntax is known
         if syntax_name not in self.available_blocks.keys():
             msg="Cannot enable unknown syntax {}".format(syntax_name)
             raise RuntimeError(msg)
 
+        # Enable top level block syntax
         self.available_blocks[syntax_name].enabled=True
 
+        # Enable sub-block types
         enabled_type_list=list()
         if isinstance(enabled_types,list):
             enabled_type_list=enabled_types
@@ -38,8 +56,25 @@ class Factory():
             msg="Invalid format for enabled_types, type = {}".format(type(enabled_types))
             raise RuntimeError(msg)
 
+        # Ensure default is enabled
+        if default not in enabled_type_list and default is not None:
+            enabled_type_list.append(default)
+
         for current_type in enabled_type_list:
+            # Ensure valid
+            if current_type not in self.available_blocks[syntax_name].enabled_types.keys():
+                msg="Unknown type {} for block {}".format(current_type,syntax_name)
+                raise KeyError(msg)
+
             self.available_blocks[syntax_name].enabled_types[current_type]=True
+
+        # Set default for typed blocks
+        syntax_type = self.available_blocks[syntax_name].syntax_type
+        if default is not None:
+            self.available_blocks[syntax_name].default_type=default
+        elif syntax_type == "fundamental" or syntax_type == "nested":
+            msg="Please set a default for typed blocks"
+            raise RuntimeError(msg)
 
 
     def write_config(self,filename):
@@ -65,60 +100,91 @@ class Factory():
         return fundamental
 
     def set_defaults(self):
-        self.enable_syntax("Mesh",enabled_types=["FileMesh","GeneratedMesh"])
-        self.enable_syntax("Executioner",enabled_types=["Steady","Transient"])
-        self.enable_syntax("Problem",enabled_types=["FEProblem"])
-        self.enable_syntax("Variables",enabled_types=["MooseVariable"])
+        self.enable_syntax("Mesh",default="FileMesh",enabled_types=["FileMesh","GeneratedMesh"])
+        self.enable_syntax("Executioner",default="Steady",enabled_types=["Steady","Transient"])
+        self.enable_syntax("Problem",default="FEProblem",enabled_types=["FEProblem"])
+        self.enable_syntax("Variables",default="MooseVariable",enabled_types=["MooseVariable"])
 
 class MooseModel():
     def __init__(self,json_obj,config_file=None):
         self.moose_objects={}
         # Create a factory for moose objects and possibly configure from file
         self.factory=Factory(json_obj,config_file)
+        # Add attributes to this model with default assignments
         self.set_defaults()
-        self.create_all_objects()
 
+    # Envisage this being overridden downstream.
     def set_defaults(self):
-        self.add_to_model("Executioner", "Steady")
-        self.add_to_model("Problem", "FEProblem")
-        self.add_to_model("Mesh", "GeneratedMesh")
+        # Fundamental Types
+        self.add_category("Executioner", "Steady")
+        self.add_category("Problem", "FEProblem")
+        self.add_category("Mesh", "GeneratedMesh")
 
-    def create_all_objects(self):
-        for category, selected in self.moose_objects:
-            self.add_object(selected)
+    def add_category(self, category, category_type, syntax_name=""):
+        # Ensure this is valid syntax
+        if category not in self.factory.enabled_syntax:
+            msg="Invalid block type {}".format(category)
+            raise RuntimeError(msg)
 
-    def add_object(self, object_type):
-        obj=self.factory.construct(object_type)
+        # First look up the syntax type
+        syntax_type=self.factory.available_blocks[category].syntax_type
+
+        # How to add depends on syntax type
+        if syntax_type == "fundamental":
+            # If fundmantal, just add. We're done.
+            self.add_object(category,category_type)
+        elif syntax_type == "nested":
+            if not hasattr(self,category):
+                self.add_collection(category)
+            self.add_to_collection(category,category_type,syntax_name)
+        elif syntax_type == "system":
+            raise NotImplementedError()
+        elif syntax_type == "nested_system":
+            raise NotImplementedError()
+        else:
+            msg="Unhandled syntax type {}".format(syntax_type)
+            raise RuntimeError(msg)
+
+        # Object has been constructed, now just book-keeping
+        category_key=category.lower()
+        if category_key not in self.moose_objects.keys():
+            self.moose_objects[category_key]=list()
+        self.moose_objects[category_key].append(category_type)
+
+    def add_object(self,object_category,object_type,**kwargs):
+        obj=self.factory.construct(object_type,**kwargs)
         # Prefer non-capitalised attributes
-        attr_name=category.lower()
-        setattr(self, attr_name, cat_instance)
+        attr_name=object_category.lower()
+        setattr(self,attr_name,obj)
 
-    def add_to_model(self, category, category_type):
-        #if category not in self.moose_objects.keys():
-        #    self.moose_objects[category]=list()
-        self.moose_objects[category]=category_type
+    def add_collection(self, collection_type):
+        # E.g. Variables, Kernels, BCs, Materials
+        # Create new subclass of with a name that matches the collection_type
+        new_cls = type(collection_type, (MOOSECollection,), dict())
 
-        # TODO enforce
-        # Cases: if fundamental , just one
-        # Cases: if nested , list
+        # Prefer non-capitalised attributes
+        attr_name=collection_type.lower()
 
+        # Construct and add the to model
+        setattr(self, attr_name, new_cls())
 
-    def add_fundmental_blocks(self):
-        # Executioner, problem, etc ..
-        for fundamental_block in self.factory.fundamental_syntax :
-            #self.add_object(fundamental_block)
+    def add_to_collection(self, collection_type, object_type, syntax_name, **kwargs):
+        # Construct object
+        obj=self.factory.construct(object_type,**kwargs)
+        if syntax_name=="":
+            raise RuntimeError("Must supply syntax_name for nested syntax")
 
-            raise NotImplementedError
+        obj.set_syntax_name(syntax_name)
 
-        # User Call me in inherited class or model file...
-    def add_nested_block(self):
-        # Variables, kernels
-        # Just one type
-        raise NotImplementedError
+        # Obtain the object for this collection type
+        collection = getattr(self, collection_type.lower())
+
+        # Store in collection
+        collection.add(obj)
 
     # Some short-hands for common operations
-    def add_variable(self):
-        raise NotImplementedError
+    def add_variable(self,name,variable_type="MooseVariable"):
+        model.add_category("Variables",name,variable_type)
 
     def add_bc(self):
         raise NotImplementedError

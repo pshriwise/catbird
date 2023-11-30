@@ -59,29 +59,43 @@ def _convert_to_type(t, val):
 
 class Catbird(ABC):
     """
-    Class that can add type-checked properties to itself.
+    Class to represent MOOSE syntax that can add type-checked properties to itself.
     """
+    def __init__(self):        
+        self._syntax_name=""
+
+    def set_syntax_name(self,syntax_name):
+        self._syntax_name=syntax_name
+        
+    @classmethod
+    def set_syntax_type(cls,syntax_type):
+        cls._syntax_type=syntax_type
+
+    @classmethod
+    def set_syntax_category(cls,syntax_category):
+        cls._syntax_category=syntax_category        
+
+    @property
+    def syntax_block_name(self):
+        if self.is_nested:
+            return self._syntax_name
+        else:
+            return self._syntax_category
+
+    @property
+    def indent_level(self):
+        if self.is_nested:
+            return 2
+        else:
+            return 1
+
+    @property
+    def is_nested(self):
+        return self._syntax_type =="nested" or self._syntax_type=="nested_system"    
+    
     @property
     def moose_params(self):
         return self._moose_params
-
-    @property
-    def block_name(self):
-        return self._block_name
-
-    @classmethod
-    def set_block_name(self,val):
-        self._block_name=val
-
-    @property
-    def level(self):
-        return self._level
-
-    @classmethod
-    def increment_level(cls):
-        if not hasattr(cls,"_level"):
-            setattr(cls,"_level",0)
-        cls._level+=1
 
     @staticmethod
     def check_type(name, val, attr_type):
@@ -135,6 +149,11 @@ class Catbird(ABC):
         """Adds a property to the class"""
         if not isinstance(attr_name, str):
             raise ValueError('Attributes must be strings')
+
+        if attr_name.find("_syntax_") != -1:
+            msg="'_syntax_' is reserved attribute string. Cannot add attibute {}".format(attr_name)
+            raise RuntimeError(msg)
+        
         prop = property(fget=cls.prop_get(attr_name, default),
                         fset=cls.prop_set(attr_name, attr_type, dim, allowed_vals))
         setattr(cls, attr_name, prop)
@@ -177,8 +196,17 @@ class Catbird(ABC):
     def indent(self):
         indent_str=""
         indent_per_level="  "
-        for i_level in range(0,self.level):
+        for i_level in range(0,self.indent_level):
             indent_str+=indent_per_level
+        return indent_str
+
+    @property
+    def prepend_indent(self):
+        indent_str=""
+        indent_per_level="  "
+        if self.indent_level > 1:
+            for i_level in range(0,self.indent_level-1):
+                indent_str+=indent_per_level
         return indent_str
 
     #@staticmethod
@@ -191,7 +219,7 @@ class Catbird(ABC):
         return attr_str
 
     def to_str(self):
-        syntax_str='[{}]\n'.format(self.block_name)
+        syntax_str='{}[{}]\n'.format(self.prepend_indent,self.syntax_block_name)
         param_list=self.moose_params
 
         # Formatting convention, start with type
@@ -201,7 +229,7 @@ class Catbird(ABC):
 
         for attr_name in param_list:
             syntax_str+=self.attr_to_str(attr_name)
-        syntax_str+='[]\n'
+        syntax_str+='{}[]\n'.format(self.prepend_indent)
 
         return syntax_str
 
@@ -211,7 +239,7 @@ class Catbird(ABC):
         print("Name: ",name)
 
         param_list=self.moose_params
-        for attr_name in param_list:
+        for attr_name in param_list:            
             attr_val = getattr(self, attr_name)
             if attr_val is not None:
                 attr_str="{}.{}: {}".format(name,attr_name,attr_val)
@@ -342,19 +370,6 @@ def parse_blocks(json_obj):
     #all_syntax=[]
     parsed_blocks={}
 
-    # Systems have a type == None
-    systems=[]
-
-    # Do not have a type, do have a sub-block
-    nested_systems=[]
-
-    # Fundamental blocks are top level-blocks with a type
-    fundamental_blocks={}
-
-    # Blocks which may have many entries, each with a type
-    nested_blocks={}
-
-
     types_key='types'
     wildcard_key='star'
     nested_key='subblocks'
@@ -375,7 +390,7 @@ def parse_blocks(json_obj):
                 block_types_now = block_dict_now[types_key]
                 if block_types_now == None:
                     #systems.append(block_name)
-                    parsed_blocks[block_name]=SyntaxBlock(block_name,"systems",None)
+                    parsed_blocks[block_name]=SyntaxBlock(block_name,"system",None)
                     #all_syntax.append(SyntaxBlock(block_name,"systems",None))
                     continue
 
@@ -419,20 +434,23 @@ def parse_problems(json_obj, problem_names=None):
 
 def get_block_types(json_obj,category):
     block_types=None
-
+    syntax_type=""
+    
     if category not in json_obj['blocks'].keys():
         msg="Unknown block name {}".format(category)
         raise RuntimeError(msg)
 
     if 'types' in json_obj['blocks'][category].keys():
         block_types =json_obj['blocks'][category]['types']
+        syntax_type="fundamental"
     elif 'star' in json_obj['blocks'][category].keys() and 'subblock_types' in json_obj['blocks'][category]['star'].keys():
         block_types=json_obj['blocks'][category]['star']['subblock_types']
+        syntax_type="nested"
     else:
         msg="Catergory {} does not have a type".format(category)
         raise RuntimeError(msg)
 
-    return block_types
+    return block_types, syntax_type
 
 
 def parse_blocks_types(json_obj,category,category_names=None):
@@ -457,7 +475,7 @@ def parse_blocks_types(json_obj,category,category_names=None):
         A dictionary of pythonised MOOSE objects of the given category.
     """
 
-    requested_blocks = get_block_types(json_obj,category)
+    requested_blocks,syntax_type = get_block_types(json_obj,category)
 
     instances_out = dict()
 
@@ -474,8 +492,11 @@ def parse_blocks_types(json_obj,category,category_names=None):
         # create new subclass of Catbird with a name that matches the block_type
         new_cls = type(block_type, (Catbird,), dict())
 
-        new_cls.set_block_name(category)
-        new_cls.increment_level()
+        # Set the
+        new_cls.set_syntax_type(syntax_type)
+        
+        if syntax_type != "nested":
+            new_cls.syntax_block_name=category
 
         # loop over the block_type parameters
         for param_name, param_info in params.items():
@@ -537,7 +558,6 @@ def problem_from_exec(exec, problem_names=None):
     dict
         A dictionary of problem objects
     """
-
     j_obj = json_from_exec(exec)
 
     return problems_from_json(j_obj, problem_names=problem_names)
