@@ -158,7 +158,12 @@ class Catbird(ABC):
             param_now.val=val
             setattr(self, '_'+name, param_now)
 
-        return property(fget,fset)
+        def fdel(self):
+            param_now = getattr(self, '_'+name)
+            del param_now
+
+
+        return property(fget,fset,fdel,param.doc)
 
     # @staticmethod
     # def prop_get(name, default=None):
