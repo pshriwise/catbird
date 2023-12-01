@@ -184,7 +184,7 @@ class MooseModel():
 
     # Some short-hands for common operations
     def add_variable(self,name,variable_type="MooseVariable"):
-        model.add_category("Variables",name,variable_type)
+        self.add_category("Variables",variable_type,name)
 
     def add_bc(self):
         raise NotImplementedError
