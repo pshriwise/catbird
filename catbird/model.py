@@ -96,8 +96,23 @@ class Factory():
 
     @property
     def fundamental_syntax(self):
-        fundamental=[ block_name  for  block_name, block in self.available_blocks.items() if block.syntax_type=="fundamental"]
-        return fundamental
+        return self.get_syntax_list("fundamental")
+
+    @property
+    def nested_syntax(self):
+        return self.get_syntax_list("nested")
+
+    @property
+    def systems_syntax(self):
+        return self.get_syntax_list("system")
+
+    @property
+    def nested_systems_syntax(self):
+        return self.get_syntax_list("nested_system")
+
+    def get_syntax_list(self,syntax_type_str):
+        syntax_list=[ block_name for  block_name, block in self.available_blocks.items() if block.syntax_type==syntax_type_str]
+        return syntax_list
 
     def set_defaults(self):
         self.enable_syntax("Mesh",default="FileMesh",enabled_types=["FileMesh","GeneratedMesh"])

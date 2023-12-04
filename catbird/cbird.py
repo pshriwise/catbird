@@ -522,25 +522,69 @@ def parse_blocks(json_obj):
 def parse_problems(json_obj, problem_names=None):
     return parse_blocks_types(json_obj,'Problem',category_names=problem_names)
 
-def get_block_types(json_obj,category):
+def get_block_types(json_obj,block_name):
     block_types=None
     syntax_type=""
 
-    if category not in json_obj['blocks'].keys():
-        msg="Unknown block name {}".format(category)
+    blocks_dict=json_obj['blocks']
+
+    if block_name not in blocks_dict.keys():
+        msg="Unknown block name {}".format(block_name)
         raise RuntimeError(msg)
 
-    if 'types' in json_obj['blocks'][category].keys():
-        block_types =json_obj['blocks'][category]['types']
-        syntax_type="fundamental"
-    elif 'star' in json_obj['blocks'][category].keys() and 'subblock_types' in json_obj['blocks'][category]['star'].keys():
-        block_types=json_obj['blocks'][category]['star']['subblock_types']
-        syntax_type="nested"
-    else:
-        msg="Catergory {} does not have a type".format(category)
-        raise RuntimeError(msg)
+    current_block_dict=blocks_dict[block_name]
 
-    return block_types, syntax_type
+    syntax_type_to_block_types={
+        "fundamental":{},
+        "system":{},
+        "nested":{},
+        "nested_system":{},
+    }
+
+    # 4 cases, but not limited to single type at once
+    if 'types' in current_block_dict.keys() and current_block_dict['types'] is not None:
+        block_types=current_block_dict['types']
+        syntax_type_to_block_types["fundamental"].update(block_types)
+
+    if 'star' in current_block_dict.keys() and current_block_dict['star'] is not None:
+        if 'subblock_types' in current_block_dict['star'].keys():
+            block_types=current_block_dict['star']['subblock_types']
+            if block_types is not None:
+                syntax_type_to_block_types["nested"].update(block_types)
+
+    if 'subblocks' in current_block_dict.keys() and current_block_dict['subblocks'] is not None:
+        for subblock_name in current_block_dict['subblocks'].keys():
+            subblock_dict=current_block_dict['subblocks'][subblock_name]
+
+            if 'types' in subblock_dict.keys() and subblock_dict['types'] is not None:
+                block_types=subblock_dict['types']
+                syntax_type_to_block_types["system"].update(block_types)
+
+            if 'star' in subblock_dict.keys() and subblock_dict['star'] is not None:
+                if 'subblock_types' in subblock_dict['star'].keys():
+                    block_types=subblock_dict['star']['subblock_types']
+                    if block_types is not None:
+                        syntax_type_to_block_types["nested_system"].update(block_types)
+
+    count_types=0
+    for syntax_type in syntax_type_to_block_types.keys():
+        block_types=syntax_type_to_block_types[syntax_type]
+        if len(block_types) > 0:
+            count_types+=1
+
+    if count_types == 0:
+        msg="Block {} is undocumented".format(block_name)
+        print(msg)
+        #raise RuntimeError(msg)
+        #block_types=None
+        #syntax_type="Unknown"
+
+    elif count_types > 1:
+        msg="Block {} is has {} types".format(block_name,len(syntax_type_to_block_types))
+        print(msg)
+
+    #return block_types, syntax_type
+    return syntax_type_to_block_types
 
 
 def parse_blocks_types(json_obj,category,category_names=None):
