@@ -32,9 +32,9 @@ class MOOSECollection(MutableSet):
     def discard(self,key):
         self.objects.pop(key)
 
-    def to_str(self):
+    def to_str(self,print_default=False):
         collection_str="[{}]\n".format(self.__class__.__name__)
         for name, obj in self.objects.items():
-            collection_str+=obj.to_str()
+            collection_str+=obj.to_str(print_default)
         collection_str+="[]\n"
         return collection_str

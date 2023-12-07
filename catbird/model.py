@@ -207,11 +207,11 @@ class MooseModel():
     def add_ic(self):
         raise NotImplementedError
 
-    def to_str(self):
+    def to_str(self,print_default=False):
         model_str=""
         for obj_type in self.moose_objects:
             obj=getattr(self,obj_type)
-            model_str+=obj.to_str()
+            model_str+=obj.to_str(print_default)
         return model_str
 
     def write(self, filename):
