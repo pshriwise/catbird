@@ -539,9 +539,13 @@ def get_block_types(json_obj,block_name):
         "system":{},
         "nested":{},
         "nested_system":{},
+        "action":{},
+        "double_nested":{},
     }
 
-    # 4 cases, but not limited to single type at once
+    # 6 cases, but not limited to single type at once
+    # TODO this is awful... refactor
+    # Suggest recursing down until found a "parameter" key
     if 'types' in current_block_dict.keys() and current_block_dict['types'] is not None:
         block_types=current_block_dict['types']
         syntax_type_to_block_types["fundamental"].update(block_types)
@@ -552,19 +556,57 @@ def get_block_types(json_obj,block_name):
             if block_types is not None:
                 syntax_type_to_block_types["nested"].update(block_types)
 
+        if 'actions' in current_block_dict['star'].keys():
+            block_types=current_block_dict['star']['actions']
+            if block_types is not None:
+                syntax_type_to_block_types["nested_action"].update(block_types)
+
     if 'subblocks' in current_block_dict.keys() and current_block_dict['subblocks'] is not None:
+
+        system_type_dict={}
+        nested_type_dict={}
+        double_nested_type_dict={}
+
         for subblock_name in current_block_dict['subblocks'].keys():
             subblock_dict=current_block_dict['subblocks'][subblock_name]
 
             if 'types' in subblock_dict.keys() and subblock_dict['types'] is not None:
                 block_types=subblock_dict['types']
-                syntax_type_to_block_types["system"].update(block_types)
+                system_type_dict[subblock_name]=block_types
 
             if 'star' in subblock_dict.keys() and subblock_dict['star'] is not None:
                 if 'subblock_types' in subblock_dict['star'].keys():
                     block_types=subblock_dict['star']['subblock_types']
                     if block_types is not None:
-                        syntax_type_to_block_types["nested_system"].update(block_types)
+                        nested_type_dict[subblock_name]=block_types
+
+            if 'subblocks' in subblock_dict.keys() and subblock_dict['subblocks'] is not None:
+
+                double_nested_type_dict[subblock_name]={}
+
+                for subsubblock_name in subblock_dict['subblocks'].keys():
+                    subsubblock_dict=subblock_dict['subblocks'][subsubblock_name]
+
+                    if 'actions' in subsubblock_dict.keys() and subsubblock_dict['actions'] is not None:
+                        double_nested_type_dict[subblock_name][subsubblock_name]=subsubblock_dict['actions']
+
+                    if 'star' in subsubblock_dict.keys() and subsubblock_dict['star'] is not None:
+                        if 'actions' in subsubblock_dict['star'].keys() and subsubblock_dict['star']['actions'] is not None:
+                            double_nested_type_dict[subblock_name][subsubblock_name]=subsubblock_dict['star']['actions']
+
+
+        if len(system_type_dict) >0:
+            syntax_type_to_block_types["system"].update(system_type_dict)
+        if len(nested_type_dict) >0:
+            syntax_type_to_block_types["nested_system"].update(nested_type_dict)
+        if len(double_nested_type_dict) >0:
+            syntax_type_to_block_types["double_nested"].update(double_nested_type_dict)
+
+
+    if 'actions' in current_block_dict.keys() and current_block_dict['actions'] is not None:
+        block_types=current_block_dict['actions']
+        syntax_type_to_block_types["action"].update(block_types)
+
 
     count_types=0
     for syntax_type in syntax_type_to_block_types.keys():
@@ -580,7 +622,7 @@ def get_block_types(json_obj,block_name):
         #syntax_type="Unknown"
 
     elif count_types > 1:
-        msg="Block {} is has {} types".format(block_name,len(syntax_type_to_block_types))
+        msg="Block {} is has {} types".format(block_name,count_types)
         print(msg)
 
     #return block_types, syntax_type
