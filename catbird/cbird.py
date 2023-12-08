@@ -14,6 +14,14 @@ type_mapping = {'Integer' : int,
                 'Array' : list}
 
 _relation_syntax=["blocks","subblocks","actions","star","types","subblock_types"]
+_relation_shorthands={
+    "types": "types/",
+    "actions":"actions/",
+    "systems": "subblocks/",
+    "type collections" : "star/subblock_types/",
+    "action collections": "star/actions/",
+    "system collections": "star/subblocks/"
+}
 
 class SyntaxRegistry():
     def __init__(self, syntax_paths_in):
@@ -40,10 +48,56 @@ class SyntaxRegistry():
         assert syntax.unique_key not in self.syntax_dict.keys()
         self.syntax_dict[syntax.unique_key]=syntax
 
+    def get_children_of_type(self,syntax_key,relation_type):
+        children=[]
+        parent=self.syntax_dict[syntax_key]
+        if parent.has_child_type(relation_type):
+            for child_path in parent.child_paths[relation_type]:
+                child=self.syntax_dict[child_path]
+                children.append(child.name)
+        return children
 
-    @property
-    def root_keys(self):
-       return [ unique_key for unique_key, syntax in self.syntax_dict.items() if syntax.is_root ]
+    def get_available_syntax(self,syntax_key):
+        available={}
+        for shortname,relation in _relation_shorthands.items():
+            syntax_list=self.get_children_of_type(syntax_key,relation)
+            if len(syntax_list)>0:
+                available[shortname]=syntax_list
+        if len(available.keys()) == 0:
+            available=None
+        return available
+
+    def make_block(self,syntax_key):
+        syntax=self.syntax_dict[syntax_key]
+
+        block=SyntaxBlock()
+        block.name=syntax.name
+        block.has_params=syntax.has_params
+        block.available_syntax=self.get_available_syntax(syntax_key)
+
+        if not syntax.is_root:
+            # Recurse until we find root
+            syntax_now=syntax
+            depth=0
+            while not syntax_now.is_root:
+                depth=depth+1
+                parent_key=syntax_now.parent_key
+                syntax_now=self.syntax_dict[parent_key]
+                parent_name=syntax_now.name
+                block.parent_blocks.insert(0,parent_name)
+            block.depth=depth
+
+        return block
+
+    def get_available_blocks(self):
+        available={}
+        for unique_key in self.syntax_dict.keys():
+            available[unique_key]=self.make_block(unique_key)
+        return available
+
+    # @property
+    # def root_keys(self):
+    #    return [ unique_key for unique_key, syntax in self.syntax_dict.items() if syntax.is_root ]
 
 class SyntaxPath():
     def __init__(self, syntax_path_in):
@@ -54,7 +108,7 @@ class SyntaxPath():
         self.is_root=False
         self.parent_path=None
         self.parent_relation_path=None
-        self.child_paths=[]
+        self.child_paths={}
         self.path=deepcopy(syntax_path_in)
 
 
@@ -112,6 +166,18 @@ class SyntaxPath():
         lookup_path+=name_in
         return lookup_path
 
+    def add_child(self, child_syntax):
+        assert isinstance(child_syntax,SyntaxPath)
+
+        # Save mapping by relation type
+        relation_key=self._key_from_list(child_syntax.parent_relation)
+        if relation_key not in self.child_paths.keys():
+            self.child_paths[relation_key]=[]
+        self.child_paths[relation_key].append(child_syntax.unique_key)
+
+    def has_child_type(self,relation):
+        return relation in self.child_paths.keys() and self.child_paths[relation] != None
+
     @property
     def parent_key(self):
         if not self.is_root:
@@ -122,44 +188,94 @@ class SyntaxPath():
         else:
             return None
 
-    def add_child(self, child_syntax):
-        assert isinstance(child_syntax,SyntaxPath)
-        self.child_paths.append(child_syntax.unique_key)
+    # @property
+    # def has_type(self):
+    #     return self.has_child_type("types")
+
+    # @property
+    # def has_actions(self):
+    #     return self.has_child_type("actions")
+
+    # @property
+    # def has_systems(self):
+    #     return self.has_child_type("systems")
+
+        # use child relation to parent type
+        ## relation cases
+        # Handle these in SyntaxBlock
+        #['actions']-->has action
+        #['subblocks']-->has system
+        #['types']-->has type
+        #['star', 'actions']-->has action_collection
+        #['star', 'subblock_types']--> has typed_collection
+        #['star', 'subblocks']--> has system_collection
 
 
 class SyntaxBlock():
-    def __init__(self, _name, _syntax_type, _known_types):
-        self.name=_name
-        self.syntax_type=_syntax_type
+    """
+    A class to represent one block of MOOSE syntax
+    """
+    def  __init__(self):
+        self.name=""
+        self.has_params=False
+        self.available_syntax={}
+        self.parent_blocks=[]
+        self.depth=0
         self.enabled=False
-        self.enabled_types={}
-        if _known_types is not None:
-            for known_type_name in _known_types:
-                self.enabled_types[known_type_name]=False
 
-        # Store what the default type should be
-        self.default_type=None
-
-    def to_dict(self):
-        syntax_dict={
-            "name": self.name,
-            "syntax_type": self.syntax_type,
-            "enabled": self.enabled,
-            "enabled_types": self.enabled_types,
-        }
-        return syntax_dict
-
-    def enable_from_dict(self,dict_in):
-        self.enabled=dict_in["enabled"]
-        self.enabled_types=dict_in["enabled_types"]
+    def to_dict(self,verbose=False):
+        block_dict=None
+        if self.enabled or verbose:
+            block_dict={
+                "name": self.name,
+                "enabled": self.enabled,
+                "params": self.has_params,
+                "available syntax": self.available_syntax,
+                "parents": self.parent_blocks,
+            }
+        return block_dict
 
     @property
-    def enabled_subblocks(self):
-        if self.enabled_types is not None:
-            enabled_type_list=[ type_name  for  type_name, enabled in self.enabled_types.items() if enabled ]
-        else:
-            enabled_type_list=None
-        return enabled_type_list
+    def is_leaf(self):
+        return self.available_syntax==None
+
+    @property
+    def is_root(self):
+        return self.depth==0
+
+
+    # def __init__(self, _name, _syntax_type, _known_types):
+    #     self.name=_name
+    #     self.syntax_type=_syntax_type
+    #     self.enabled=False
+    #     self.enabled_types={}
+    #     if _known_types is not None:
+    #         for known_type_name in _known_types:
+    #             self.enabled_types[known_type_name]=False
+
+    #     # Store what the default type should be
+    #     self.default_type=None
+
+    # def to_dict(self):
+    #     syntax_dict={
+    #         "name": self.name,
+    #         "syntax_type": self.syntax_type,
+    #         "enabled": self.enabled,
+    #         "enabled_types": self.enabled_types,
+    #     }
+    #     return syntax_dict
+
+    # def enable_from_dict(self,dict_in):
+    #     self.enabled=dict_in["enabled"]
+    #     self.enabled_types=dict_in["enabled_types"]
+
+    # @property
+    # def enabled_subblocks(self):
+    #     if self.enabled_types is not None:
+    #         enabled_type_list=[ type_name  for  type_name, enabled in self.enabled_types.items() if enabled ]
+    #     else:
+    #         enabled_type_list=None
+    #     return enabled_type_list
 
 
 # convenience function for converting types
