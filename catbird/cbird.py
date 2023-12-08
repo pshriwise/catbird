@@ -4,7 +4,7 @@ import json
 import numpy as np
 from pathlib import Path
 import subprocess
-
+from copy import deepcopy
 
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
@@ -12,6 +12,120 @@ type_mapping = {'Integer' : int,
                 'Real' : float,
                 'String' : str,
                 'Array' : list}
+
+_relation_syntax=["blocks","subblocks","actions","star","types","subblock_types"]
+
+class SyntaxRegistry():
+    def __init__(self, syntax_paths_in):
+        self.syntax_dict={}
+
+        assert isinstance(syntax_paths_in,list)
+        for path_now in syntax_paths_in:
+            self._recurse_path(path_now)
+
+
+    def _recurse_path(self, path_in, children=None):
+        syntax=SyntaxPath(path_in)
+        self._add_syntax(syntax)
+
+        # Add / update parents
+        if syntax.parent_key is not None:
+            if syntax.parent_key not in self.syntax_dict:
+                self._recurse_path(syntax.parent_path)
+            # Add current node to parent
+            self.syntax_dict[syntax.parent_key].add_child(syntax)
+
+    def _add_syntax(self, syntax):
+        assert isinstance(syntax,SyntaxPath)
+        assert syntax.unique_key not in self.syntax_dict.keys()
+        self.syntax_dict[syntax.unique_key]=syntax
+
+
+    @property
+    def root_keys(self):
+       return [ unique_key for unique_key, syntax in self.syntax_dict.items() if syntax.is_root ]
+
+class SyntaxPath():
+    def __init__(self, syntax_path_in):
+        # Initial values
+        self.name=""
+        self.unique_key=""
+        self.has_params=False
+        self.is_root=False
+        self.parent_path=None
+        self.parent_relation_path=None
+        self.child_paths=[]
+        self.path=deepcopy(syntax_path_in)
+
+
+        syntax_path=deepcopy(syntax_path_in)
+
+        # Type assertions
+        assert isinstance(syntax_path,list)
+        assert len(syntax_path)>1
+        for key in syntax_path:
+            assert isinstance(key,str)
+
+        # Check for parameters
+        pos_now=len(syntax_path)-1
+        key_now = syntax_path.pop(pos_now)
+        if key_now == "parameters":
+            self.has_params=True
+            self.path.pop(pos_now)
+            pos_now=pos_now-1
+            key_now = syntax_path.pop(pos_now)
+
+        # Set object name
+        self.name=key_now
+        self.unique_key=self._get_lookup_key(syntax_path,key_now)
+
+        if len(syntax_path) > 1 :
+            relation_path=[]
+            found_parent=False
+            while not found_parent and len(syntax_path) > 0:
+                pos_now=len(syntax_path)-1
+                test_key=syntax_path.pop(pos_now)
+                if test_key in _relation_syntax:
+                    relation_path.insert(0,test_key)
+                else:
+                    found_parent=True
+                    syntax_path.append(test_key)
+
+            if not found_parent:
+                raise RuntimeError("Should not get here")
+            self.parent_relation=relation_path
+            self.parent_path=syntax_path
+
+        else:
+            self.is_root=True
+
+
+    def _key_from_list(self,path_in):
+        path_str=""
+        for key in path_in:
+            path_str+=key
+            path_str+="/"
+        return path_str
+
+    def _get_lookup_key(self,path_in,name_in):
+        lookup_path=self._key_from_list(path_in)
+        lookup_path+=name_in
+        return lookup_path
+
+    @property
+    def parent_key(self):
+        if not self.is_root:
+            parent_path_now=deepcopy(self.parent_path)
+            parent_len=len(parent_path_now)
+            parent_name=parent_path_now.pop(parent_len-1)
+            return self._get_lookup_key(parent_path_now,parent_name)
+        else:
+            return None
+
+    def add_child(self, child_syntax):
+        assert isinstance(child_syntax,SyntaxPath)
+        self.child_paths.append(child_syntax.unique_key)
+
 
 class SyntaxBlock():
     def __init__(self, _name, _syntax_type, _known_types):
@@ -55,6 +169,21 @@ def _convert_to_type(t, val):
     else:
         val = t(val)
     return val
+
+def get_params(json_dict,syntax):
+    assert isinstance(syntax,SyntaxPath)
+    assert syntax.has_params
+    key_list=deepcopy(syntax.path)
+    dict_now=json_dict
+    while len(key_list) > 0:
+        key_now=key_list.pop(0)
+        obj_now=dict_now[key_now]
+
+        assert isinstance(obj_now,dict)
+        dict_now=deepcopy(obj_now)
+
+    params=dict_now["parameters"]
+    return params
 
 class MooseParam():
     """
@@ -437,6 +566,38 @@ def problems_from_json(json_file, problem_names=None):
     out['problems'] = parse_problems(json_obj, problem_names=problem_names)
 
     return out
+
+def key_search_recurse(dict_in, test_path, key_test, level_stop=15):
+    """
+    Parse blocks recursively until we hit the given key
+    """
+    if not isinstance(dict_in,dict):
+        return list()
+
+    if len(test_path) == level_stop:
+        return list()
+
+    if key_test in dict_in.keys():
+        # Success at leaf node! Found key, return path to here
+        success_path=deepcopy(test_path)
+        success_path.append(key_test)
+        return [ success_path ]
+
+    success_paths=[]
+    for key_now, test_obj in dict_in.items():
+        # Path to be tested
+        path_now=deepcopy(test_path)
+        path_now.append(key_now)
+
+        paths_to_success=key_search_recurse(test_obj,path_now,key_test,level_stop)
+
+        # If search fails, paths will be empty
+        # Otherwise add to our known list of success paths from this node
+        if len( paths_to_success ) != 0:
+            success_paths.extend(paths_to_success)
+
+    return success_paths
+
 
 def parse_blocks(json_obj):
     """
