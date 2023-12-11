@@ -24,11 +24,12 @@ _relation_shorthands={
 }
 
 class SyntaxRegistry():
-    def __init__(self, exec_path_in):
-        self.syntax_dict={}
-        all_json=json_from_exec(exec_path_in)
+    def __init__(self, all_json):
+        # Flatten highly nested json dict
         syntax_paths=key_search_recurse(all_json,[],"parameters",20)
         assert isinstance(syntax_paths,list)
+
+        self.syntax_dict={}
         for path_now in syntax_paths:
             self._recurse_path(path_now)
 
@@ -94,10 +95,21 @@ class SyntaxRegistry():
     def get_available_blocks(self):
         available={}
         for unique_key in self.syntax_dict.keys():
-
-
             available[unique_key]=self.make_block(unique_key)
         return available
+
+    # def get_available_blocks_sorted_by_depth(self):
+    #     available_by_depth={}
+    #     for unique_key in self.syntax_dict.keys():
+    #         block_now=self.make_block(unique_key)
+    #         depth_now=block_now.depth
+    #         if depth_now not in available_by_depth.keys():
+    #             available_by_depth[depth_now]={}
+    #         available_by_depth[depth_now][unique_key]=block_now
+    #     return available_by_depth
+
+    # def blocks_by_depth(self, request_depth):
+    #     return [ unique_key for unique_key, syntax in self.syntax_dict.items() if syntax.depth == request_depth ]
 
     # @property
     # def root_keys(self):
@@ -234,7 +246,7 @@ class SyntaxBlock():
             block_dict={
                 "name": self.name,
                 "enabled": self.enabled,
-                #"params": self.has_params,
+                "params": self.has_params,
             }
             #if verbose:
             #    if  self.available_syntax:
@@ -258,7 +270,6 @@ class SyntaxBlock():
         path=self.path+"/"+_relation_shorthands[relation_type]+child_name
         return path
 
-
     # def __init__(self, _name, _syntax_type, _known_types):
     #     self.name=_name
     #     self.syntax_type=_syntax_type
@@ -280,10 +291,6 @@ class SyntaxBlock():
     #     }
     #     return syntax_dict
 
-    # def enable_from_dict(self,dict_in):
-    #     self.enabled=dict_in["enabled"]
-    #     self.enabled_types=dict_in["enabled_types"]
-
     # @property
     # def enabled_subblocks(self):
     #     if self.enabled_types is not None:
@@ -301,10 +308,27 @@ def _convert_to_type(t, val):
         val = t(val)
     return val
 
-def get_params(json_dict,syntax):
+# def get_params(json_dict,syntax):
+#     assert isinstance(syntax,SyntaxPath)
+#     assert syntax.has_params
+#     key_list=deepcopy(syntax.path)
+#     dict_now=json_dict
+#     while len(key_list) > 0:
+#         key_now=key_list.pop(0)
+#         obj_now=dict_now[key_now]
+
+#         assert isinstance(obj_now,dict)
+#         dict_now=deepcopy(obj_now)
+
+#     params=dict_now["parameters"]
+#     return params
+
+def get_block(json_dict,syntax):
     assert isinstance(syntax,SyntaxPath)
-    assert syntax.has_params
+
     key_list=deepcopy(syntax.path)
+    assert len(key_list) > 0
+
     dict_now=json_dict
     while len(key_list) > 0:
         key_now=key_list.pop(0)
@@ -313,8 +337,16 @@ def get_params(json_dict,syntax):
         assert isinstance(obj_now,dict)
         dict_now=deepcopy(obj_now)
 
-    params=dict_now["parameters"]
-    return params
+
+    try:
+        assert syntax.has_params
+    except AssertionError:
+        print(syntax.name)
+        print(dict_now.keys())
+        raise AssertionError
+
+    return dict_now
+
 
 class MooseParam():
     """
@@ -338,31 +370,31 @@ class Catbird(ABC):
     def set_syntax_name(self,syntax_name):
         self._syntax_name=syntax_name
 
-    @classmethod
-    def set_syntax_type(cls,syntax_type):
-        cls._syntax_type=syntax_type
+    # @classmethod
+    # def set_syntax_type(cls,syntax_type):
+    #     cls._syntax_type=syntax_type
 
-    @classmethod
-    def set_syntax_category(cls,syntax_category):
-        cls._syntax_category=syntax_category
+    # @classmethod
+    # def set_syntax_category(cls,syntax_category):
+    #     cls._syntax_category=syntax_category
 
-    @property
-    def syntax_block_name(self):
-        if self.is_nested:
-            return self._syntax_name
-        else:
-            return self._syntax_category
+    # @property
+    # def syntax_block_name(self):
+    #     if self.is_nested:
+    #         return self._syntax_name
+    #     else:
+    #         return self._syntax_category
 
-    @property
-    def indent_level(self):
-        if self.is_nested:
-            return 2
-        else:
-            return 1
+    # @property
+    # def indent_level(self):
+    #     if self.is_nested:
+    #         return 2
+    #     else:
+    #         return 1
 
-    @property
-    def is_nested(self):
-        return self._syntax_type =="nested" or self._syntax_type=="nested_system"
+    # @property
+    # def is_nested(self):
+    #     return self._syntax_type =="nested" or self._syntax_type=="nested_system"
 
     @property
     def moose_params(self):
@@ -920,6 +952,56 @@ def get_block_types(json_obj,block_name):
     #return block_types, syntax_type
     return syntax_type_to_block_types
 
+
+def parse_block(json_obj,block_path):
+    # Available syntax for this block as dict
+    block=get_block(json_obj,block_path)
+
+    # Create new subclass of Catbird with a name that matches the block
+    name=block_path.name
+    new_cls = type(name, (Catbird,), dict())
+
+    # Add parameters as attributes
+    params=block["parameters"]
+    for param_name, param_info in params.items():
+        # Determine the type of the parameter
+        attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
+        attr_type = attr_types[-1]
+
+        if len(attr_types) > 1:
+            for t in attr_types[:-1]:
+                assert issubclass(t, Iterable)
+                ndim = len(attr_types) - 1
+        else:
+            ndim = 0
+
+        # Set allowed values if present
+        allowed_values = None
+        if param_info['options']:
+            values = param_info['options'].split()
+            allowed_values = [_convert_to_type(attr_type, v) for v in values]
+
+        # Apply the default value if provided
+        # TODO: default values need to be handled differently. They are replacing
+        # properties in the type definition as they are now
+        default = None
+        if 'default' in param_info.keys() and param_info['default'] != None and param_info['default'] != '':
+            if ndim == 0:
+                default = _convert_to_type(attr_type, param_info['default'])
+            else:
+                default = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
+
+        # Add an attribute to the class instance for this parameter
+        new_cls.newattr(param_name,
+                        attr_type,
+                        description=param_info.get('description'),
+                        default=default,
+                        dim=ndim,
+                        allowed_vals=allowed_values)
+
+
+    # Return our new class
+    return new_cls
 
 def parse_blocks_types(json_obj,category,category_names=None):
     """

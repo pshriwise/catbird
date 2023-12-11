@@ -1,38 +1,50 @@
-from .cbird import SyntaxRegistry, SyntaxBlock, parse_blocks, parse_blocks_types, read_json, write_json
+from .cbird import SyntaxRegistry, SyntaxBlock, parse_block, read_json, write_json, json_from_exec
 from .collection import MOOSECollection
 
 class Factory():
     def __init__(self,exec_path,config_file=None):
-        self.registry=SyntaxRegistry(exec_path)
+        json_obj=json_from_exec(exec_path)
+        self.registry=SyntaxRegistry(json_obj)
         self.available_blocks=self.registry.get_available_blocks()
-        self.constructors={}
         self.set_defaults()
-        if config_file is not None:
-            self.load_config(config_file)
+        # if config_file is not None:
+        #     self.load_config(config_file)
         self.load_enabled_objects(json_obj)
 
-     def load_enabled_objects(self,json_obj):
-         raise NotImplementedError
-    #     for enabled_block in self.enabled_syntax:
-    #         enabled_types=self.available_blocks[enabled_block].enabled_subblocks
-    #         syntax_type=self.available_blocks[enabled_block].syntax_type
-    #         if syntax_type=="fundamental" or syntax_type=="nested":
-    #             self.constructors.update(parse_blocks_types(json_obj,enabled_block,category_names=enabled_types))
-    #         else:
-    #             msg="Unsupported syntax type {}".format(syntax_type)
-    #             raise NotImplementedError(msg)
+    def load_enabled_objects(self,json_obj):
+        self.constructors={}
+        for block_name, block in self.available_blocks.items():
+            if  not ( block.enabled and block.is_leaf ):
+                continue
 
-    # def construct(self,obj_type,**kwargs):
-    #     obj=self.constructors[obj_type]()
+            # Convert string to SyntaxPath
+            syntax_path=self.registry.syntax_dict[block_name]
 
-    #     # Handle keyword arguments
-    #     for key, value in kwargs.items():
-    #         if not hasattr(obj,key):
-    #             msg="Object type {} does not have attribute {}".format(obj_type,key)
-    #             raise RuntimeError()
-    #         setattr(obj, key, value)
+            # Fetch syntax for block and make a new object type
+            new_class=parse_block(json_obj,syntax_path)
 
-    #     return obj
+            # Some details about the type of object
+            class_name=syntax_path.name
+            namespace=syntax_path.parent_path[-1]
+            if namespace not in self.constructors.keys():
+                self.constructors[namespace]={}
+            if class_name in self.constructors[namespace].keys():
+                raise RuntimeError("Duplicated class name {} in namespace {}".format(class_name,namespace))
+
+            # Save class constructor
+            self.constructors[namespace][class_name]=new_class
+
+    def construct(self,namespace,obj_type,**kwargs):
+        obj=self.constructors[namespace][obj_type]()
+
+        # Handle keyword arguments
+        for key, value in kwargs.items():
+            if not hasattr(obj,key):
+                msg="Object type {} does not have attribute {}".format(obj_type,key)
+                raise RuntimeError()
+            setattr(obj, key, value)
+
+        return obj
 
     def enable_syntax(self,block_name,enable_dict=None):
         """
@@ -68,25 +80,6 @@ class Factory():
                 enable_key=block_now.path_to_child(syntax_shortname,syntax_item)
                 self.available_blocks[enable_key].enabled=True
 
-        # # Ensure default is enabled
-        # if default not in enabled_type_list and default is not None:
-        #     enabled_type_list.append(default)
-
-        # for current_type in enabled_type_list:
-        #     # Ensure valid
-        #     if current_type not in self.available_blocks[syntax_name].enabled_types.keys():
-        #         msg="Unknown type {} for block {}".format(current_type,syntax_name)
-        #         raise KeyError(msg)
-
-        #     self.available_blocks[syntax_name].enabled_types[current_type]=True
-
-        # # Set default for typed blocks
-        # syntax_type = self.available_blocks[syntax_name].syntax_type
-        # if default is not None:
-        #     self.available_blocks[syntax_name].default_type=default
-        # elif syntax_type == "fundamental" or syntax_type == "nested":
-        #     msg="Please set a default for typed blocks"
-        #     raise RuntimeError(msg)
 
     def write_config(self,filename,print_depth=3,verbose=False):
         config_dict={}
@@ -97,36 +90,10 @@ class Factory():
         write_json(config_dict,filename)
 
     def load_config(self,filename):
-        raise NotImplementedError
-    #     config_in=read_json(filename)
-    #     #read from file
-    #     for block_name, block_dict in config_in.items():
-    #         self.available_blocks[block_name].enable_from_dict(block_dict)
-
-    @property
-    def enabled_syntax(self):
-        enabled=[ block_name  for  block_name, block in self.available_blocks.items() if block.enabled ]
-        return enabled
-
-    # @property
-    # def fundamental_syntax(self):
-    #     return self.get_syntax_list("fundamental")
-
-    # @property
-    # def nested_syntax(self):
-    #     return self.get_syntax_list("nested")
-
-    # @property
-    # def systems_syntax(self):
-    #     return self.get_syntax_list("system")
-
-    # @property
-    # def nested_systems_syntax(self):
-    #     return self.get_syntax_list("nested_system")
-
-    # def get_syntax_list(self,syntax_type_str):
-    #     syntax_list=[ block_name for  block_name, block in self.available_blocks.items() if block.syntax_type==syntax_type_str]
-    #     return syntax_list
+        # Fetch enabled objects from filename
+        config_in=read_json(filename)
+        for block_name, block_dict in config_in.items():
+            self.available_blocks[block_name].enabled=block_dict["enabled"]
 
     def set_defaults(self):
         self.enable_syntax("Mesh")
@@ -140,31 +107,25 @@ class Factory():
     #     self.enable_syntax("Variables",default="MooseVariable",enabled_types=["MooseVariable"])
 
 class MooseModel():
-    def __init__(self,json_obj,config_file=None):
-        self.moose_objects={}
+    def __init__(self,factory_in):
+        assert isinstance(factory_in,Factory)
+        self.factory=factory_in
 
-        # To-do: change signature
-
-        # Create a factory for moose objects and possibly configure from file
-        self.factory=Factory(json_obj,config_file)
         # Add attributes to this model with default assignments
+        self.moose_objects={}
         self.set_defaults()
 
     # Envisage this being overridden downstream.
     def set_defaults(self):
-        # Fundamental Types
-        self.add_category("Executioner", "Steady")
-        self.add_category("Problem", "FEProblem")
-        self.add_category("Mesh", "GeneratedMesh")
+        self.add_object("Executioner", "Steady")
+        self.add_object("Problem", "FEProblem")
+        self.add_object("Mesh", "GeneratedMesh")
 
-    def add_category(self, category, category_type, syntax_name=""):
-        # Ensure this is valid syntax
-        if category not in self.factory.enabled_syntax:
-            msg="Invalid block type {}".format(category)
-            raise RuntimeError(msg)
-
-
-        raise NotImplementedError
+    #def  add_category(self, category, category_type, syntax_name=""):
+    # # Ensure this is valid syntax
+        # if category not in self.factory.constructors.keys():
+        #     msg="Invalid block type {}".format(category)
+        #     raise RuntimeError(msg)
 
         # # First look up the syntax type
         # syntax_type=self.factory.available_blocks[category].syntax_type
@@ -191,10 +152,10 @@ class MooseModel():
         #     self.moose_objects[category_key]=list()
         # self.moose_objects[category_key].append(category_type)
 
-    def add_object(self,object_category,object_type,**kwargs):
-        obj=self.factory.construct(object_type,**kwargs)
+    def add_object(self,namespace,object_type,**kwargs):
+        obj=self.factory.construct(namespace,object_type,**kwargs)
         # Prefer non-capitalised attributes
-        attr_name=object_category.lower()
+        attr_name=namespace.lower()
         setattr(self,attr_name,obj)
 
     def add_collection(self, collection_type):
@@ -224,7 +185,8 @@ class MooseModel():
 
     # Some short-hands for common operations
     def add_variable(self,name,variable_type="MooseVariable"):
-        self.add_category("Variables",variable_type,name)
+        raise NotImplementedError
+        #self.add_category("Variables",variable_type,name)
 
     def add_bc(self):
         raise NotImplementedError
