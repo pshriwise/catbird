@@ -24,11 +24,12 @@ _relation_shorthands={
 }
 
 class SyntaxRegistry():
-    def __init__(self, syntax_paths_in):
+    def __init__(self, exec_path_in):
         self.syntax_dict={}
-
-        assert isinstance(syntax_paths_in,list)
-        for path_now in syntax_paths_in:
+        all_json=json_from_exec(exec_path_in)
+        syntax_paths=key_search_recurse(all_json,[],"parameters",20)
+        assert isinstance(syntax_paths,list)
+        for path_now in syntax_paths:
             self._recurse_path(path_now)
 
 
