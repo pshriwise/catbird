@@ -73,6 +73,7 @@ class SyntaxRegistry():
 
         block=SyntaxBlock()
         block.name=syntax.name
+        block.path=syntax_key
         block.has_params=syntax.has_params
         block.available_syntax=self.get_available_syntax(syntax_key)
 
@@ -93,6 +94,8 @@ class SyntaxRegistry():
     def get_available_blocks(self):
         available={}
         for unique_key in self.syntax_dict.keys():
+
+
             available[unique_key]=self.make_block(unique_key)
         return available
 
@@ -218,23 +221,30 @@ class SyntaxBlock():
     """
     def  __init__(self):
         self.name=""
+        self.path=""
         self.has_params=False
+        self.enabled=False
         self.available_syntax={}
         self.parent_blocks=[]
         self.depth=0
-        self.enabled=False
 
-    def to_dict(self,verbose=False):
-        block_dict=None
-        if self.enabled or verbose:
+    def to_dict(self, print_depth=3, verbose=False):
+        config_entry=None
+        if ( self.enabled and self.depth < print_depth ) or verbose:
             block_dict={
                 "name": self.name,
                 "enabled": self.enabled,
-                "params": self.has_params,
-                "available syntax": self.available_syntax,
-                "parents": self.parent_blocks,
+                #"params": self.has_params,
             }
-        return block_dict
+            #if verbose:
+            #    if  self.available_syntax:
+            #        block_dict["available syntax"] = self.available_syntax
+            #    if  self.parent_blocks:
+            #        block_dict["parents"] =  self.parent_blocks
+
+            config_entry= { self.path : block_dict }
+
+        return config_entry
 
     @property
     def is_leaf(self):
@@ -243,6 +253,10 @@ class SyntaxBlock():
     @property
     def is_root(self):
         return self.depth==0
+
+    def path_to_child(self,relation_type,child_name):
+        path=self.path+"/"+_relation_shorthands[relation_type]+child_name
+        return path
 
 
     # def __init__(self, _name, _syntax_type, _known_types):
