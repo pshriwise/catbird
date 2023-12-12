@@ -2,6 +2,13 @@
 from copy import deepcopy
 from .cbird import Catbird
 
+type_mapping = {'Integer' : int,
+                'Boolean' : bool,
+                'Float' : float,
+                'Real' : float,
+                'String' : str,
+                'Array' : list}
+
 _relation_syntax=["blocks","subblocks","actions","star","types","subblock_types"]
 _relation_shorthands={
     "types": "types/",
@@ -401,3 +408,11 @@ def parse_block(json_obj,block_path):
 
     # Return our new class
     return new_cls
+
+# convenience function for converting types
+def _convert_to_type(t, val):
+    if t == bool:
+        val = bool(int(val))
+    else:
+        val = t(val)
+    return val
