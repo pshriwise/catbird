@@ -1,4 +1,4 @@
-from .cbird import MooseObject
+from .obj import MooseObject
 from .syntax import type_mapping, _convert_to_type
 from .utils import json_from_exec, write_json
 

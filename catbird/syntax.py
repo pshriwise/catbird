@@ -1,7 +1,7 @@
 """Classes and functions to parse MOOSE syntax"""
 from collections.abc import Iterable
 from copy import deepcopy
-from .cbird import MooseObject
+from .obj import MooseObject
 from .action import MooseAction
 from .system import MooseSystem
 from .collection import MooseCollection

@@ -1,6 +1,6 @@
 from collections.abc import MutableSet
 from .action import MooseAction
-from .cbird import MooseObject
+from .obj import MooseObject
 from .system import MooseSystem
 
 class MooseCollection(MutableSet):
