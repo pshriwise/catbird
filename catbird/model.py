@@ -12,9 +12,10 @@ class MooseModel():
 
     # Envisage this being overridden downstream.
     def set_defaults(self):
-        self.add_object("Executioner", "Steady")
-        self.add_object("Problem", "FEProblem")
-        self.add_object("Mesh", "GeneratedMesh")
+        self.add_root_syntax("Executioner", "Steady")
+        self.add_root_syntax("Problem", "FEProblem")
+        self.add_root_syntax("Mesh", "GeneratedMesh")
+        self.add_root_syntax("Variables")
 
     #def  add_category(self, category, category_type, syntax_name=""):
     # # Ensure this is valid syntax
@@ -47,13 +48,13 @@ class MooseModel():
         #     self.moose_objects[category_key]=list()
         # self.moose_objects[category_key].append(category_type)
 
-    def add_object(self,namespace,object_type,**kwargs):
+    def add_root_syntax(self,root_name,*obj_types,**kwargs):
         """
-        Add a MOOSE object from a given namespace to the model.
+        Add an object corresponding to root-level MOOSE syntax
         """
-        obj=self.factory.construct(namespace,object_type,**kwargs)
+        obj=self.factory.construct_root(root_name,obj_types,kwargs)
         # Prefer non-capitalised attributes
-        attr_name=namespace.lower()
+        attr_name=root_name.lower()
         setattr(self,attr_name,obj)
 
     # def add_collection(self, collection_type):

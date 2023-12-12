@@ -10,16 +10,16 @@ class Factory():
         self.set_defaults()
         # if config_file is not None:
         #     self.load_config(config_file)
-        self.load_namespaces()
+        self.load_root_syntax()
         self.load_enabled_objects(json_obj)
 
-    def load_namespaces(self):
+    def load_root_syntax(self):
         # Loop over enabled root nodes
-        self.namespaces={}
+        self.root_syntax={}
         for block_name, block in self.available_blocks.items():
             if  not ( block.enabled and block.is_root ):
                 continue
-            self.namespaces[block.name]=block.get_mixins()
+            self.root_syntax[block.name]=block.get_mixins()
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
@@ -55,25 +55,25 @@ class Factory():
         return __init__
 
 
-    def derive_class(self,namespace,obj_types):
+    def derive_class(self,root_name,obj_types):
         # Get mixins boilerplate
-        mixins=self.namespaces[namespace]
+        mixins=self.root_syntax[root_name]
 
         # Update mixins list by comparing types
         for obj_type in obj_types:
-            class_now=self.constructors[namespace][obj_type]
+            class_now=self.constructors[root_name][obj_type]
             for i_mixin, mixin in enumerate(mixins):
                 if issubclass(class_now,mixin):
                     mixins[i_mixin]=class_now
                     break
 
         # Our fancy new mixin class
-        new_cls = type(namespace, tuple(mixins),{"__init__":self.__get_init_method(mixins)})
+        new_cls = type(root_name, tuple(mixins),{"__init__":self.__get_init_method(mixins)})
         return new_cls
 
-    def construct(self,namespace,*obj_types,**kwargs):
+    def construct_root(self,root_name,obj_types,kwargs):
         # Get class
-        obj_class=self.derive_class(namespace, obj_types)
+        obj_class=self.derive_class(root_name, obj_types)
         obj=obj_class()
 
         # Handle keyword arguments
