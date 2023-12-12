@@ -1,10 +1,13 @@
 from collections.abc import MutableSet
+from .action import MOOSEAction
 from .cbird import Catbird
+from .system import MOOSESystem
 
 class MOOSECollection(MutableSet):
-    """A collection of MOOSE (Catbird) objects"""
+    """A collection of MOOSE objects"""
     def __init__(self):
         self.objects={}
+        self._type=None
 
     # Define mandatory methods
     def __contains__(self,key):
@@ -16,12 +19,14 @@ class MOOSECollection(MutableSet):
     def __len__(self):
         return len(self.objects)
 
+    def _check_type(self,obj):
+        pass
+
     def add(self,obj):
-        # Ensure type inherits from Catbird
-        assert issubclass(type(obj),Catbird)
+        # Type checking on object, raise an error if fails
+        self._check_type(obj)
 
         block_name=obj.syntax_block_name
-
         if block_name in self.objects.keys():
             msg="Collection already contains named block {}".format(block_name)
             raise RuntimeError(msg)
@@ -38,3 +43,26 @@ class MOOSECollection(MutableSet):
             collection_str+=obj.to_str(print_default)
         collection_str+="[]\n"
         return collection_str
+
+
+class MOOSEObjectCollection(MOOSECollection):
+    def __init__(self):
+        super().__init__()
+
+    def _check_type(self,obj):
+        assert issubclass(type(obj),Catbird)
+
+
+class MOOSEActionCollection(MOOSECollection):
+    def __init__(self):
+        super().__init__()
+
+    def _check_type(self,obj):
+        assert issubclass(type(obj),MOOSEAction)
+
+class MOOSESystemCollection(MOOSECollection):
+    def __init__(self):
+        super().__init__()
+
+    def _check_type(self,obj):
+        assert issubclass(type(obj),MOOSEAction)

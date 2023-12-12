@@ -1,8 +1,6 @@
 from abc import ABC
-from collections.abc import Iterable
 from copy import deepcopy
 import numpy as np
-from .syntax import SyntaxPath
 
 class MooseParam():
     """

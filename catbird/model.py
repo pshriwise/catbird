@@ -49,6 +49,9 @@ class MooseModel():
         # self.moose_objects[category_key].append(category_type)
 
     def add_object(self,namespace,object_type,**kwargs):
+        """
+        Add a MOOSE object from a given namespace to the model.
+        """
         obj=self.factory.construct(namespace,object_type,**kwargs)
         # Prefer non-capitalised attributes
         attr_name=namespace.lower()

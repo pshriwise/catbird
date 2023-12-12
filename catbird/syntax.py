@@ -1,6 +1,10 @@
 """Classes and functions to parse MOOSE syntax"""
+from collections.abc import Iterable
 from copy import deepcopy
 from .cbird import Catbird
+from .action import MOOSEAction
+from .system import MOOSESystem
+from .collection import MOOSECollection
 
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
@@ -18,6 +22,16 @@ _relation_shorthands={
     "action collections": "star/actions/",
     "system collections": "star/subblocks/"
 }
+
+_mixin_map={
+    "types": Catbird,
+    "actions": MOOSEAction,
+    "systems": MOOSESystem,
+    "type collections" : MOOSECollection,
+    "action collections":  MOOSECollection,
+    "system collections":  MOOSECollection
+}
+
 
 class SyntaxPath():
     """
@@ -175,6 +189,14 @@ class SyntaxBlock():
     def path_to_child(self,relation_type,child_name):
         path=self.path+"/"+_relation_shorthands[relation_type]+child_name
         return path
+
+    def get_mixins(self):
+        mixin_list=[]
+        for relation_type in self.available_syntax.keys():
+            mixin_now=_mixin_map[relation_type]
+            if mixin_now not in mixin_list:
+                mixin_list.append(mixin_now)
+        return mixin_list
 
     # def __init__(self, _name, _syntax_type, _known_types):
     #     self.name=_name
@@ -347,8 +369,7 @@ def get_block(json_dict,syntax):
         obj_now=dict_now[key_now]
 
         assert isinstance(obj_now,dict)
-       dict_now=deepcopy(obj_now)
-
+        dict_now=deepcopy(obj_now)
 
     try:
         assert syntax.has_params

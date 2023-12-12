@@ -1,5 +1,6 @@
 from .syntax import SyntaxRegistry, parse_block
 from .utils import read_json, write_json, json_from_exec
+from .cbird import Catbird
 
 class Factory():
     """Class to contain constructors for MOOSE syntax objects"""
@@ -8,12 +9,22 @@ class Factory():
         self.registry=SyntaxRegistry(json_obj)
         self.available_blocks=self.registry.get_available_blocks()
         self.set_defaults()
-        if config_file is not None:
-            self.load_config(config_file)
+        # if config_file is not None:
+        #     self.load_config(config_file)
+        self.load_namespaces()
         self.load_enabled_objects(json_obj)
+
+    def load_namespaces(self):
+        # Loop over enabled root nodes
+        self.namespaces={}
+        for block_name, block in self.available_blocks.items():
+            if  not ( block.enabled and block.is_root ):
+                continue
+            self.namespaces[block.name]=block.get_mixins()
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
+        # Loop over enabled leaf nodes
         for block_name, block in self.available_blocks.items():
             if  not ( block.enabled and block.is_leaf ):
                 continue
@@ -35,8 +46,36 @@ class Factory():
             # Save class constructor
             self.constructors[namespace][class_name]=new_class
 
-    def construct(self,namespace,obj_type,**kwargs):
-        obj=self.constructors[namespace][obj_type]()
+    @staticmethod
+    def __get_init_method(mixins):
+        # Define an __init__ function for the class.
+        def __init__(self, *args, **kwargs):
+            # Call the __init__ functions of all the mix-ins
+                for base in mixins:
+                    base.__init__(self, *args, **kwargs)
+        return __init__
+
+
+    def derive_class(self,namespace,obj_types):
+        # Get mixins boilerplate
+        mixins=self.namespaces[namespace]
+
+        # Update mixins list by comparing types
+        for obj_type in obj_types:
+            class_now=self.constructors[namespace][obj_type]
+            for i_mixin, mixin in enumerate(mixins):
+                if issubclass(class_now,mixin):
+                    mixins[i_mixin]=class_now
+                    break
+
+        # Our fancy new mixin class
+        new_cls = type(namespace, tuple(mixins),{"__init__":self.__get_init_method(mixins)})
+        return new_cls
+
+    def construct(self,namespace,*obj_types,**kwargs):
+        # Get class
+        obj_class=self.derive_class(namespace, obj_types)
+        obj=obj_class()
 
         # Handle keyword arguments
         for key, value in kwargs.items():
