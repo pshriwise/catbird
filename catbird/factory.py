@@ -1,5 +1,4 @@
-from .syntax import SyntaxRegistry
-from .cbird import parse_block
+from .syntax import SyntaxRegistry, parse_block
 from .utils import read_json, write_json, json_from_exec
 
 class Factory():

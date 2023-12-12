@@ -20,30 +20,6 @@ def _convert_to_type(t, val):
         val = t(val)
     return val
 
-def get_block(json_dict,syntax):
-    assert isinstance(syntax,SyntaxPath)
-
-    key_list=deepcopy(syntax.path)
-    assert len(key_list) > 0
-
-    dict_now=json_dict
-    while len(key_list) > 0:
-        key_now=key_list.pop(0)
-        obj_now=dict_now[key_now]
-
-        assert isinstance(obj_now,dict)
-        dict_now=deepcopy(obj_now)
-
-
-    try:
-        assert syntax.has_params
-    except AssertionError:
-        print(syntax.name)
-        print(dict_now.keys())
-        raise AssertionError
-
-    return dict_now
-
 class MooseParam():
     """
     Class to contain all information about a MOOSE parameter
@@ -540,56 +516,6 @@ def get_block_types(json_obj,block_name):
     #return block_types, syntax_type
     return syntax_type_to_block_types
 
-
-def parse_block(json_obj,block_path):
-    # Available syntax for this block as dict
-    block=get_block(json_obj,block_path)
-
-    # Create new subclass of Catbird with a name that matches the block
-    name=block_path.name
-    new_cls = type(name, (Catbird,), dict())
-
-    # Add parameters as attributes
-    params=block["parameters"]
-    for param_name, param_info in params.items():
-        # Determine the type of the parameter
-        attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
-        attr_type = attr_types[-1]
-
-        if len(attr_types) > 1:
-            for t in attr_types[:-1]:
-                assert issubclass(t, Iterable)
-                ndim = len(attr_types) - 1
-        else:
-            ndim = 0
-
-        # Set allowed values if present
-        allowed_values = None
-        if param_info['options']:
-            values = param_info['options'].split()
-            allowed_values = [_convert_to_type(attr_type, v) for v in values]
-
-        # Apply the default value if provided
-        # TODO: default values need to be handled differently. They are replacing
-        # properties in the type definition as they are now
-        default = None
-        if 'default' in param_info.keys() and param_info['default'] != None and param_info['default'] != '':
-            if ndim == 0:
-                default = _convert_to_type(attr_type, param_info['default'])
-            else:
-                default = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
-
-        # Add an attribute to the class instance for this parameter
-        new_cls.newattr(param_name,
-                        attr_type,
-                        description=param_info.get('description'),
-                        default=default,
-                        dim=ndim,
-                        allowed_vals=allowed_values)
-
-
-    # Return our new class
-    return new_cls
 
 def parse_blocks_types(json_obj,category,category_names=None):
     """
