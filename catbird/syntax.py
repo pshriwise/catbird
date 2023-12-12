@@ -1,3 +1,4 @@
+"""Classes and functions to parse MOOSE syntax"""
 from copy import deepcopy
 from .cbird import Catbird
 

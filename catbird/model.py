@@ -2,6 +2,7 @@ from .collection import MOOSECollection
 from .factory import Factory
 
 class MooseModel():
+    """Class to represent a MOOSE model"""
     def __init__(self,factory_in):
         assert isinstance(factory_in,Factory)
         self.factory=factory_in

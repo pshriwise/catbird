@@ -2,6 +2,7 @@ from .syntax import SyntaxRegistry, parse_block
 from .utils import read_json, write_json, json_from_exec
 
 class Factory():
+    """Class to contain constructors for MOOSE syntax objects"""
     def __init__(self,exec_path,config_file=None):
         json_obj=json_from_exec(exec_path)
         self.registry=SyntaxRegistry(json_obj)
