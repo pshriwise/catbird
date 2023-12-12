@@ -1,9 +1,9 @@
 from collections.abc import MutableSet
-from .action import MOOSEAction
-from .cbird import Catbird
-from .system import MOOSESystem
+from .action import MooseAction
+from .cbird import MooseObject
+from .system import MooseSystem
 
-class MOOSECollection(MutableSet):
+class MooseCollection(MutableSet):
     """A collection of MOOSE objects"""
     def __init__(self):
         self.objects={}
@@ -44,25 +44,23 @@ class MOOSECollection(MutableSet):
         collection_str+="[]\n"
         return collection_str
 
-
-class MOOSEObjectCollection(MOOSECollection):
+class MooseObjectCollection(MooseCollection):
     def __init__(self):
         super().__init__()
 
     def _check_type(self,obj):
-        assert issubclass(type(obj),Catbird)
+        assert issubclass(type(obj),MooseObject)
 
-
-class MOOSEActionCollection(MOOSECollection):
+class MooseActionCollection(MooseCollection):
     def __init__(self):
         super().__init__()
 
     def _check_type(self,obj):
-        assert issubclass(type(obj),MOOSEAction)
+        assert issubclass(type(obj),MooseAction)
 
-class MOOSESystemCollection(MOOSECollection):
+class MooseSystemCollection(MooseCollection):
     def __init__(self):
         super().__init__()
 
     def _check_type(self,obj):
-        assert issubclass(type(obj),MOOSEAction)
+        assert issubclass(type(obj),MooseSystem)

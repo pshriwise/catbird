@@ -1,10 +1,10 @@
 """Classes and functions to parse MOOSE syntax"""
 from collections.abc import Iterable
 from copy import deepcopy
-from .cbird import Catbird
-from .action import MOOSEAction
-from .system import MOOSESystem
-from .collection import MOOSECollection
+from .cbird import MooseObject
+from .action import MooseAction
+from .system import MooseSystem
+from .collection import MooseCollection
 
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
@@ -24,12 +24,12 @@ _relation_shorthands={
 }
 
 _mixin_map={
-    "types": Catbird,
-    "actions": MOOSEAction,
-    "systems": MOOSESystem,
-    "type collections" : MOOSECollection,
-    "action collections":  MOOSECollection,
-    "system collections":  MOOSECollection
+    "types": MooseObject,
+    "actions": MooseAction,
+    "systems": MooseSystem,
+    "type collections" : MooseCollection,
+    "action collections":  MooseCollection,
+    "system collections":  MooseCollection
 }
 
 
@@ -168,9 +168,9 @@ class SyntaxBlock():
                 "enabled": self.enabled,
                 "params": self.has_params,
             }
-            #if verbose:
-            #    if  self.available_syntax:
-            #        block_dict["available syntax"] = self.available_syntax
+            if verbose:
+                if  self.available_syntax:
+                    block_dict["available syntax"] = self.available_syntax
             #    if  self.parent_blocks:
             #        block_dict["parents"] =  self.parent_blocks
 
@@ -384,9 +384,9 @@ def parse_block(json_obj,block_path):
     # Available syntax for this block as dict
     block=get_block(json_obj,block_path)
 
-    # Create new subclass of Catbird with a name that matches the block
+    # Create new subclass of MooseObject with a name that matches the block
     name=block_path.name
-    new_cls = type(name, (Catbird,), dict())
+    new_cls = type(name, (MooseObject,), dict())
 
     # Add parameters as attributes
     params=block["parameters"]

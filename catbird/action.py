@@ -1,3 +1,3 @@
-class MOOSEAction():
+class MooseAction():
     def __init__(self):
         pass

@@ -1,4 +1,4 @@
-from .cbird import Catbird
+from .cbird import MooseObject
 from .syntax import type_mapping, _convert_to_type
 from .utils import json_from_exec, write_json
 
@@ -226,10 +226,10 @@ def parse_blocks_types(json_obj,category,category_names=None):
 
         params = block_attributes['parameters']
 
-        # create new subclass of Catbird with a name that matches the block_type
-        new_cls = type(block_type, (Catbird,), dict())
+        # Create new subclass of MooseObject with a name that matches the block_type
+        new_cls = type(block_type, (MooseObject,), dict())
 
-        # Set the
+        # Set the block title
         new_cls.set_syntax_type(syntax_type)
 
         if syntax_type != "nested":

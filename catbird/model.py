@@ -1,4 +1,3 @@
-from .collection import MOOSECollection
 from .factory import Factory
 
 class MooseModel():
@@ -57,53 +56,53 @@ class MooseModel():
         attr_name=namespace.lower()
         setattr(self,attr_name,obj)
 
-    def add_collection(self, collection_type):
-        # E.g. Variables, Kernels, BCs, Materials
-        # Create new subclass of with a name that matches the collection_type
-        new_cls = type(collection_type, (MOOSECollection,), dict())
+    # def add_collection(self, collection_type):
+    #     # E.g. Variables, Kernels, BCs, Materials
+    #     # Create new subclass of with a name that matches the collection_type
+    #     new_cls = type(collection_type, (MOOSECollection,), dict())
 
-        # Prefer non-capitalised attributes
-        attr_name=collection_type.lower()
+    #     # Prefer non-capitalised attributes
+    #     attr_name=collection_type.lower()
 
-        # Construct and add the to model
-        setattr(self, attr_name, new_cls())
+    #     # Construct and add the to model
+    #     setattr(self, attr_name, new_cls())
 
-    def add_to_collection(self, collection_type, object_type, syntax_name, **kwargs):
-        raise NotImplementedError
+    # def add_to_collection(self, collection_type, object_type, syntax_name, **kwargs):
+    #     raise NotImplementedError
         
-        # # Construct object
-        # obj=self.factory.construct(collection_type,object_type,**kwargs)
-        # if syntax_name=="":
-        #     raise RuntimeError("Must supply syntax_name for nested syntax")
+    #     # Construct object
+    #     obj=self.factory.construct(collection_type,object_type,**kwargs)
+    #     if syntax_name=="":
+    #         raise RuntimeError("Must supply syntax_name for nested syntax")
 
-        # obj.set_syntax_name(syntax_name)
+    #     obj.set_syntax_name(syntax_name)
 
-        # # Obtain the object for this collection type
-        # collection = getattr(self, collection_type.lower())
+    #     # Obtain the object for this collection type
+    #     collection = getattr(self, collection_type.lower())
 
-        # # Store in collection
-        # collection.add(obj)
+    #     # Store in collection
+    #     collection.add(obj)
 
-    # Some short-hands for common operations
-    def add_variable(self,name,variable_type="MooseVariable"):
-        raise NotImplementedError
-        #self.add_category("Variables",variable_type,name)
+    # # Some short-hands for common operations
+    # def add_variable(self,name,variable_type="MooseVariable"):
+    #     raise NotImplementedError
+    #     #self.add_category("Variables",variable_type,name)
 
-    def add_bc(self):
-        raise NotImplementedError
+    # def add_bc(self):
+    #     raise NotImplementedError
 
-    def add_ic(self):
-        raise NotImplementedError
+    # def add_ic(self):
+    #     raise NotImplementedError
 
-    def to_str(self,print_default=False):
-        model_str=""
-        for obj_type in self.moose_objects:
-            obj=getattr(self,obj_type)
-            model_str+=obj.to_str(print_default)
-        return model_str
+    # def to_str(self,print_default=False):
+    #     model_str=""
+    #     for obj_type in self.moose_objects:
+    #         obj=getattr(self,obj_type)
+    #         model_str+=obj.to_str(print_default)
+    #     return model_str
 
-    def write(self, filename):
-        file_handle = open(filename,'w')
-        file_handle.write(self.to_str())
-        file_handle.close()
-        print("Wrote to ",filename)
+    # def write(self, filename):
+    #     file_handle = open(filename,'w')
+    #     file_handle.write(self.to_str())
+    #     file_handle.close()
+    #     print("Wrote to ",filename)

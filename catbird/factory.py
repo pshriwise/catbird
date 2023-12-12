@@ -1,6 +1,5 @@
 from .syntax import SyntaxRegistry, parse_block
 from .utils import read_json, write_json, json_from_exec
-from .cbird import Catbird
 
 class Factory():
     """Class to contain constructors for MOOSE syntax objects"""

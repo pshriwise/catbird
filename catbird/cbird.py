@@ -14,9 +14,9 @@ class MooseParam():
         self.dim=0
         self.doc=""
 
-class Catbird(ABC):
+class MooseObject(ABC):
     """
-    Class to represent MOOSE syntax that can add type-checked properties to itself.
+    Class to represent typed MOOSE syntax that can add type-checked properties to itself.
     """
     def __init__(self):
         self._syntax_name=""
