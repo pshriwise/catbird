@@ -1,4 +1,5 @@
-from .cbird import SyntaxRegistry, parse_block, read_json, write_json, json_from_exec
+from .syntax import SyntaxRegistry
+from .cbird import parse_block, read_json, write_json, json_from_exec
 
 class Factory():
     def __init__(self,exec_path,config_file=None):
