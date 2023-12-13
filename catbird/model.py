@@ -7,17 +7,18 @@ class MooseModel():
     def __init__(self,factory_in):
         assert isinstance(factory_in,Factory)
         self.factory=factory_in
+        #self.moose_objects={}
 
         # Add attributes to this model with default assignments
-        self.moose_objects={}
-        self.set_defaults()
+        self.load_default_syntax()
 
     # Envisage this being overridden downstream.
-    def set_defaults(self):
-        self.add_root_syntax("Executioner", obj_type="Steady")
-        self.add_root_syntax("Problem", obj_type="FEProblem")
-        self.add_root_syntax("Mesh", obj_type="GeneratedMesh")
-        self.add_root_syntax("Variables")
+    def load_default_syntax(self):
+        self.add_syntax("Executioner", obj_type="Steady")
+        self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
+        #self.add_syntax("Problem", obj_type="FEProblem")
+        #self.add_syntax("Mesh", obj_type="GeneratedMesh")
+        #self.add_syntax("Variables")
 
     #def  add_category(self, category, category_type, syntax_name=""):
     # # Ensure this is valid syntax
@@ -50,9 +51,9 @@ class MooseModel():
         #     self.moose_objects[category_key]=list()
         # self.moose_objects[category_key].append(category_type)
 
-    def add_root_syntax(self,root_name,**kwargs_in):
+    def add_syntax(self,syntax_name,**kwargs_in):
         """
-        Add an object corresponding to root-level MOOSE syntax
+        Add an object corresponding to MOOSE syntax
         """
         # First, pop out any relation key-word args
         obj_types={}
@@ -63,10 +64,41 @@ class MooseModel():
                 obj_type = kwargs.pop(keyword)
                 obj_types[keyword]=obj_type
 
-        obj=self.factory.construct_root(root_name,obj_types,kwargs)
-        # Prefer non-capitalised attributes
-        attr_name=root_name.lower()
-        setattr(self,attr_name,obj)
+        # Construct the object
+        obj=self.factory.construct_root(syntax_name,obj_types,kwargs)
+
+        # Add to model
+        self._add_to_model(syntax_name,obj)
+
+    def _add_to_model(self,syntax_name,obj):
+        """Add object to the model as an attribute"""
+        # Obtain sequence of objects
+        obj_path=syntax_name.split(sep=".")
+
+        # Attribute name (non-capitalised)
+        obj_name=obj_path.pop(-1)
+        attr_name=obj_name.lower()
+
+        # Recurse through parent attribute objects
+        parent_obj=self
+        while len(obj_path)>0:
+            new_parent_name=obj_path.pop(-1)
+            new_parent_name=new_parent_name.lower()
+            if not hasattr(parent_obj,new_parent_name):
+                msg="Cannot construct {}:\n".format(syntax_name)
+                msg=msg+"Class {} has no attribute {}".format(parent_obj.__class__.__name__,new_parent_name)
+                raise RuntimeError(msg)
+            new_parent_obj=getattr(parent_obj,new_parent_name)
+            parent_obj=new_parent_obj
+
+        # Avoid overwriting
+        if hasattr(parent_obj,attr_name):
+            msg="Class {} already has attribute {}".format(parent_obj.__class__.__name__,attr_name)
+            raise RuntimeError(msg)
+
+        # Add
+        setattr(parent_obj,attr_name,obj)
+
 
     # def add_collection(self, collection_type):
     #     # E.g. Variables, Kernels, BCs, Materials

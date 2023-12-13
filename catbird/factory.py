@@ -17,7 +17,6 @@ class Factory():
         Retreive a tuple of abstract classes to mix to form our root syntax node.
         """
         assert not block.is_leaf
-        print("saving root",block_name,block.longname)
         self.root_syntax[block.longname]=block.get_mixins()
 
     def _load_leaf_syntax(self,block_name,block,json_obj):
@@ -26,21 +25,24 @@ class Factory():
         """
         assert block.is_leaf
 
+        # Some details about the type of object
+        relation=block.relation_key
+        class_name=block.name
+        parent_name=block.parent_longname
+
         # Convert string to SyntaxPath
         syntax_path=self.registry.syntax_dict[block_name]
 
         # Fetch syntax for block and make a new object type
         new_class=parse_block(json_obj,syntax_path)
 
-        # Some details about the type of object
-        class_name=syntax_path.name
-        parent_name=syntax_path.parent_path[-1]
-        relation=block.relation_key
+        # Ensure dictionary initialised
         if parent_name not in self.constructors.keys():
             self.constructors[parent_name]={}
         if relation not in self.constructors[parent_name].keys():
             self.constructors[parent_name][relation]={}
 
+        # Don't duplicate
         if class_name in self.constructors[parent_name][relation].keys():
             raise RuntimeError("Duplicated class name {} in namespace {}.{}".format(class_name,parent_name,relation))
 
@@ -78,7 +80,6 @@ class Factory():
         rootname : str
         obj_types: dict
         """
-
         # Get mixins boilerplate
         mixins=self.root_syntax[root_name]
 
@@ -131,25 +132,32 @@ class Factory():
             msg="Cannot enable unknown syntax {}".format(syntax_name)
             raise RuntimeError(msg)
 
-        # Enable top level block syntax
-        self.available_blocks[syntax_name].enabled=True
-        block_now=self.available_blocks[syntax_name]
+        syntax_to_enable=[syntax_name]
 
-        # Enable sub-block types
-        available_sub_syntax=self.registry.get_available_syntax(syntax_name)
-        for syntax_shortname, syntax_list in available_sub_syntax.items():
+        while len(syntax_to_enable)>0:
+            # Get front of queue
+            syntax_name_now=syntax_to_enable.pop(0)
 
-            # If provided, only enable user-specified types
-            if enable_dict and syntax_shortname not in enable_dict.keys():
-                continue
+            # Enable top level block syntax
+            self.available_blocks[syntax_name_now].enabled=True
 
-            for syntax_item in syntax_list:
-                if enable_dict and syntax_item not in enable_dict[syntax_shortname]:
-                    continue
+            # Get sub-block types
+            block_now=self.available_blocks[syntax_name_now]
 
-                # Get longname and enable
-                enable_key=block_now.path_to_child(syntax_shortname,syntax_item)
-                self.available_blocks[enable_key].enabled=True
+            available_sub_syntax=self.registry.get_available_syntax(syntax_name_now)
+            if available_sub_syntax is not None:
+                for relation_shortname, syntax_list in available_sub_syntax.items():
+                    # If enable_dict is provided, only enable user-specified types
+                    if enable_dict and relation_shortname not in enable_dict.keys():
+                        continue
+
+                    for syntax_item in syntax_list:
+                        if enable_dict and syntax_item not in enable_dict[relation_shortname]:
+                            continue
+
+                        # Get syntax lookup key and add to queue
+                        new_syntax=block_now.path_to_child(relation_shortname,syntax_item)
+                        syntax_to_enable.append(new_syntax)
 
 
     def write_config(self,filename,print_depth=3,verbose=False):
