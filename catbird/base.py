@@ -1,6 +1,7 @@
-from .base import MooseBase
+from abc import ABC
 
-class MooseAction(MooseBase):
+class MooseBase(ABC):
+    """The most fundamental syntactical object."""
     def __init__(self):
         pass
 

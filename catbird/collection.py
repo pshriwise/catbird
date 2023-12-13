@@ -1,7 +1,5 @@
 from collections.abc import MutableSet
-from .action import MooseAction
-from .obj import MooseObject
-from .system import MooseSystem
+from .base import MooseBase
 
 class MooseCollection(MutableSet):
     """A collection of MOOSE objects"""
@@ -20,7 +18,7 @@ class MooseCollection(MutableSet):
         return len(self.objects)
 
     def _check_type(self,obj):
-        pass
+        assert issubclass(type(obj),MooseBase)
 
     def add(self,obj):
         # Type checking on object, raise an error if fails
@@ -43,24 +41,3 @@ class MooseCollection(MutableSet):
             collection_str+=obj.to_str(print_default)
         collection_str+="[]\n"
         return collection_str
-
-class MooseObjectCollection(MooseCollection):
-    def __init__(self):
-        super().__init__()
-
-    def _check_type(self,obj):
-        assert issubclass(type(obj),MooseObject)
-
-class MooseActionCollection(MooseCollection):
-    def __init__(self):
-        super().__init__()
-
-    def _check_type(self,obj):
-        assert issubclass(type(obj),MooseAction)
-
-class MooseSystemCollection(MooseCollection):
-    def __init__(self):
-        super().__init__()
-
-    def _check_type(self,obj):
-        assert issubclass(type(obj),MooseSystem)

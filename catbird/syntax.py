@@ -3,7 +3,6 @@ from collections.abc import Iterable
 from copy import deepcopy
 from .obj import MooseObject
 from .action import MooseAction
-from .system import MooseSystem
 from .collection import MooseCollection
 
 type_mapping = {'Integer' : int,
@@ -15,23 +14,29 @@ type_mapping = {'Integer' : int,
 
 _relation_syntax=["blocks","subblocks","actions","star","types","subblock_types"]
 _relation_shorthands={
-    "types": "types/",
-    "actions":"actions/",
-    "systems": "subblocks/",
-    "type collections" : "star/subblock_types/",
-    "action collections": "star/actions/",
-    "system collections": "star/subblocks/"
+    "types/":"obj_type",
+    "actions/": "action",
+    "subblocks/":"system",
+    "star/subblock_types/":"collection_type",
+    "star/actions/":"collection_action",
+    "star/subblocks/":"nested_system",
+    "star/star/actions/":"nested_collection_action",
+    "star/star/subblock_types/":"nested_collection_type",
 }
 
 _mixin_map={
-    "types": MooseObject,
-    "actions": MooseAction,
-    "systems": MooseSystem,
-    "type collections" : MooseCollection,
-    "action collections":  MooseCollection,
-    "system collections":  MooseCollection
+    "obj_type": MooseObject,
+    "action": MooseAction,
+    "system": MooseCollection,
+    "collection_type" : MooseCollection,
+    "collection_action":  MooseCollection,
+    "nested_system":  None, # The attribute should be added one layer down
+    "nested_collection_action": None, # Don't support this syntax
+    "nested_collection_type": None, # Don't support this syntax
 }
 
+def get_relation_kwargs():
+    return _relation_shorthands.values()
 
 class SyntaxPath():
     """
@@ -44,7 +49,7 @@ class SyntaxPath():
         self.has_params=False
         self.is_root=False
         self.parent_path=None
-        self.parent_relation_path=None
+        self.parent_relation=None
         self.child_paths={}
         self.path=deepcopy(syntax_path_in)
 
@@ -84,7 +89,14 @@ class SyntaxPath():
 
             if not found_parent:
                 raise RuntimeError("Should not get here")
-            self.parent_relation=relation_path
+
+            if relation_path:
+                _parent_relation=self._key_from_list(relation_path)
+                if _parent_relation not in _relation_shorthands.keys():
+                    print(syntax_path_in)
+                    raise RuntimeError("unknown relation type: {}",format(_parent_relation))
+                self.parent_relation=_parent_relation
+
             self.parent_path=syntax_path
 
         else:
@@ -107,7 +119,7 @@ class SyntaxPath():
         assert isinstance(child_syntax,SyntaxPath)
 
         # Save mapping by relation type
-        relation_key=self._key_from_list(child_syntax.parent_relation)
+        relation_key=_relation_shorthands[child_syntax.parent_relation]
         if relation_key not in self.child_paths.keys():
             self.child_paths[relation_key]=[]
         self.child_paths[relation_key].append(child_syntax.unique_key)
@@ -125,27 +137,13 @@ class SyntaxPath():
         else:
             return None
 
-    # @property
-    # def has_type(self):
-    #     return self.has_child_type("types")
-
-    # @property
-    # def has_actions(self):
-    #     return self.has_child_type("actions")
-
-    # @property
-    # def has_systems(self):
-    #     return self.has_child_type("systems")
-
-        # use child relation to parent type
-        ## relation cases
-        # Handle these in SyntaxBlock
-        #['actions']-->has action
-        #['subblocks']-->has system
-        #['types']-->has type
-        #['star', 'actions']-->has action_collection
-        #['star', 'subblock_types']--> has typed_collection
-        #['star', 'subblocks']--> has system_collection
+    @property
+    def relation_to_parent(self):
+        if self.parent_relation:
+            relation=_relation_shorthands[self.parent_relation]
+            return relation
+        else:
+            return None
 
 class SyntaxBlock():
     """
@@ -157,6 +155,7 @@ class SyntaxBlock():
         self.has_params=False
         self.enabled=False
         self.available_syntax={}
+        self.relation_key=None
         self.parent_blocks=[]
         self.depth=0
 
@@ -186,15 +185,26 @@ class SyntaxBlock():
     def is_root(self):
         return self.depth==0
 
-    def path_to_child(self,relation_type,child_name):
-        path=self.path+"/"+_relation_shorthands[relation_type]+child_name
+    def path_to_child(self,relation_shortname,child_name):
+        # Invert dictionary
+        found=False
+        relation_type=None
+        for test_relation_type,test_shortname in _relation_shorthands.items():
+            if relation_shortname == test_shortname:
+                found=True
+                relation_type=test_relation_type
+
+        if not found:
+            msg="No known relation syntax maps onto shortname {}".format(relation_shortname)
+            raise RuntimeError(msg)
+        path=self.path+"/"+relation_type+child_name
         return path
 
     def get_mixins(self):
         mixin_list=[]
         for relation_type in self.available_syntax.keys():
             mixin_now=_mixin_map[relation_type]
-            if mixin_now not in mixin_list:
+            if mixin_now is not None and mixin_now not in mixin_list:
                 mixin_list.append(mixin_now)
         return mixin_list
 
@@ -271,8 +281,8 @@ class SyntaxRegistry():
 
     def get_available_syntax(self,syntax_key):
         available={}
-        for shortname,relation in _relation_shorthands.items():
-            syntax_list=self.get_children_of_type(syntax_key,relation)
+        for relation,shortname in _relation_shorthands.items():
+            syntax_list=self.get_children_of_type(syntax_key,shortname)
             if len(syntax_list)>0:
                 available[shortname]=syntax_list
         if len(available.keys()) == 0:
@@ -287,7 +297,9 @@ class SyntaxRegistry():
         block.path=syntax_key
         block.has_params=syntax.has_params
         block.available_syntax=self.get_available_syntax(syntax_key)
+        block.relation_key=syntax.relation_to_parent
 
+        # Set block depth and parents
         if not syntax.is_root:
             # Recurse until we find root
             syntax_now=syntax

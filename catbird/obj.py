@@ -1,6 +1,6 @@
-from abc import ABC
 from copy import deepcopy
 import numpy as np
+from .base import MooseBase
 
 class MooseParam():
     """
@@ -14,7 +14,7 @@ class MooseParam():
         self.dim=0
         self.doc=""
 
-class MooseObject(ABC):
+class MooseObject(MooseBase):
     """
     Class to represent typed MOOSE syntax that can add type-checked properties to itself.
     """

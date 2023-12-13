@@ -33,14 +33,18 @@ class Factory():
 
         # Some details about the type of object
         class_name=syntax_path.name
-        namespace=syntax_path.parent_path[-1]
-        if namespace not in self.constructors.keys():
-            self.constructors[namespace]={}
-        if class_name in self.constructors[namespace].keys():
-            raise RuntimeError("Duplicated class name {} in namespace {}".format(class_name,namespace))
+        parent_name=syntax_path.parent_path[-1]
+        relation=block.relation_key
+        if parent_name not in self.constructors.keys():
+            self.constructors[parent_name]={}
+        if relation not in self.constructors[parent_name].keys():
+            self.constructors[parent_name][relation]={}
+
+        if class_name in self.constructors[parent_name][relation].keys():
+            raise RuntimeError("Duplicated class name {} in namespace {}.{}".format(class_name,parent_name,relation))
 
         # Save class constructor
-        self.constructors[namespace][class_name]=new_class
+        self.constructors[parent_name][relation][class_name]=new_class
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
@@ -67,23 +71,40 @@ class Factory():
         return __init__
 
     def derive_class(self,root_name,obj_types):
-        """Form a new mix-in class from a tuple of classes"""
+        """
+        Form a new mix-in class from a tuple of classes
+
+        Parameters
+        ----------
+        rootname : str
+        obj_types: dict
+        """
+
         # Get mixins boilerplate
         mixins=self.root_syntax[root_name]
 
         # Update mixins list by comparing types
-        for obj_type in obj_types:
-            class_now=self.constructors[root_name][obj_type]
+        for relation_type, obj_type in obj_types.items():
+            # Look up type
+            class_now=self.constructors[root_name][relation_type][obj_type]
             for i_mixin, mixin in enumerate(mixins):
                 if issubclass(class_now,mixin):
                     mixins[i_mixin]=class_now
                     break
 
         # Our fancy new mixin class
+        # TODO: define to_dict...
         new_cls = type(root_name, tuple(mixins),{"__init__":self.__get_init_method(mixins)})
         return new_cls
 
     def construct_root(self,root_name,obj_types,kwargs):
+        """
+        Parameters
+        ----------
+        rootname : str
+        obj_types: dict
+        kwargs: dict
+        """
         # Get class
         obj_class=self.derive_class(root_name, obj_types)
         obj=obj_class()
@@ -91,12 +112,11 @@ class Factory():
         # Handle keyword arguments
         for key, value in kwargs.items():
             if not hasattr(obj,key):
-                msg="Object type {} does not have attribute {}".format(obj_type,key)
+                msg="Object type {} does not have attribute {}".format(root_name,key)
                 raise RuntimeError()
             setattr(obj, key, value)
 
         return obj
-
 
     def enable_syntax(self,block_name,enable_dict=None):
         """

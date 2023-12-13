@@ -1,4 +1,6 @@
+from copy import deepcopy
 from .factory import Factory
+from .syntax import get_relation_kwargs
 
 class MooseModel():
     """Class to represent a MOOSE model"""
@@ -12,9 +14,9 @@ class MooseModel():
 
     # Envisage this being overridden downstream.
     def set_defaults(self):
-        self.add_root_syntax("Executioner", "Steady")
-        self.add_root_syntax("Problem", "FEProblem")
-        self.add_root_syntax("Mesh", "GeneratedMesh")
+        self.add_root_syntax("Executioner", obj_type="Steady")
+        self.add_root_syntax("Problem", obj_type="FEProblem")
+        self.add_root_syntax("Mesh", obj_type="GeneratedMesh")
         self.add_root_syntax("Variables")
 
     #def  add_category(self, category, category_type, syntax_name=""):
@@ -48,10 +50,19 @@ class MooseModel():
         #     self.moose_objects[category_key]=list()
         # self.moose_objects[category_key].append(category_type)
 
-    def add_root_syntax(self,root_name,*obj_types,**kwargs):
+    def add_root_syntax(self,root_name,**kwargs_in):
         """
         Add an object corresponding to root-level MOOSE syntax
         """
+        # First, pop out any relation key-word args
+        obj_types={}
+        relations=get_relation_kwargs()
+        kwargs=deepcopy(kwargs_in)
+        for keyword in kwargs_in.keys():
+            if keyword in relations:
+                obj_type = kwargs.pop(keyword)
+                obj_types[keyword]=obj_type
+
         obj=self.factory.construct_root(root_name,obj_types,kwargs)
         # Prefer non-capitalised attributes
         attr_name=root_name.lower()
@@ -70,7 +81,7 @@ class MooseModel():
 
     # def add_to_collection(self, collection_type, object_type, syntax_name, **kwargs):
     #     raise NotImplementedError
-        
+
     #     # Construct object
     #     obj=self.factory.construct(collection_type,object_type,**kwargs)
     #     if syntax_name=="":
