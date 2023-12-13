@@ -10,52 +10,64 @@ class Factory():
         self.set_defaults()
         # if config_file is not None:
         #     self.load_config(config_file)
-        self.load_root_syntax()
         self.load_enabled_objects(json_obj)
 
-    def load_root_syntax(self):
-        # Loop over enabled root nodes
-        self.root_syntax={}
-        for block_name, block in self.available_blocks.items():
-            if  not ( block.enabled and block.is_root ):
-                continue
-            self.root_syntax[block.name]=block.get_mixins()
+    def _load_root_syntax(self,block_name, block):
+        """
+        Retreive a tuple of abstract classes to mix to form our root syntax node.
+        """
+        assert block.is_root and block.enabled
+        self.root_syntax[block.name]=block.get_mixins()
+
+    def _load_leaf_syntax(self,block_name, block,json_obj):
+        """
+        Retreive a class with attributes matching the available syntax for the block.
+        """
+        assert block.is_leaf and block.enabled
+
+        # Convert string to SyntaxPath
+        syntax_path=self.registry.syntax_dict[block_name]
+
+        # Fetch syntax for block and make a new object type
+        new_class=parse_block(json_obj,syntax_path)
+
+        # Some details about the type of object
+        class_name=syntax_path.name
+        namespace=syntax_path.parent_path[-1]
+        if namespace not in self.constructors.keys():
+            self.constructors[namespace]={}
+        if class_name in self.constructors[namespace].keys():
+            raise RuntimeError("Duplicated class name {} in namespace {}".format(class_name,namespace))
+
+        # Save class constructor
+        self.constructors[namespace][class_name]=new_class
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
-        # Loop over enabled leaf nodes
+        self.root_syntax={}
+
+        # Loop over enabled syntax blocks
         for block_name, block in self.available_blocks.items():
-            if  not ( block.enabled and block.is_leaf ):
+            if  not  block.enabled:
                 continue
 
-            # Convert string to SyntaxPath
-            syntax_path=self.registry.syntax_dict[block_name]
-
-            # Fetch syntax for block and make a new object type
-            new_class=parse_block(json_obj,syntax_path)
-
-            # Some details about the type of object
-            class_name=syntax_path.name
-            namespace=syntax_path.parent_path[-1]
-            if namespace not in self.constructors.keys():
-                self.constructors[namespace]={}
-            if class_name in self.constructors[namespace].keys():
-                raise RuntimeError("Duplicated class name {} in namespace {}".format(class_name,namespace))
-
-            # Save class constructor
-            self.constructors[namespace][class_name]=new_class
+            if block.is_leaf:
+                self._load_leaf_syntax(block_name, block, json_obj)
+            elif  block.is_root:
+                self._load_root_syntax(block_name, block)
+            else:
+                print(block_name)
 
     @staticmethod
     def __get_init_method(mixins):
-        # Define an __init__ function for the class.
+        # The returned init method should call each of the mix-in base class init methods in turn.
         def __init__(self, *args, **kwargs):
-            # Call the __init__ functions of all the mix-ins
-                for base in mixins:
-                    base.__init__(self, *args, **kwargs)
+            for base in mixins:
+                base.__init__(self, *args, **kwargs)
         return __init__
 
-
     def derive_class(self,root_name,obj_types):
+        """Form a new mix-in class from a tuple of classes"""
         # Get mixins boilerplate
         mixins=self.root_syntax[root_name]
 
@@ -84,6 +96,7 @@ class Factory():
             setattr(obj, key, value)
 
         return obj
+
 
     def enable_syntax(self,block_name,enable_dict=None):
         """
