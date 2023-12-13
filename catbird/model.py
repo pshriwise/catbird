@@ -14,10 +14,15 @@ class MooseModel():
 
     # Envisage this being overridden downstream.
     def load_default_syntax(self):
-        self.add_syntax("Executioner", obj_type="Steady")
-        self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
+        #self.add_syntax("Executioner", obj_type="Steady")
+        #self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
         #self.add_syntax("Problem", obj_type="FEProblem")
         #self.add_syntax("Mesh", obj_type="GeneratedMesh")
+
+        self.add_syntax("Mesh",
+                        obj_type="GeneratedMesh",
+                        action="CreateDisplacedProblemAction")
+
         #self.add_syntax("Variables")
 
     #def  add_category(self, category, category_type, syntax_name=""):

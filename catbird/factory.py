@@ -4,13 +4,25 @@ from .utils import read_json, write_json, json_from_exec
 class Factory():
     """Class to contain constructors for MOOSE syntax objects"""
     def __init__(self,exec_path,config_file=None):
+        print("Loading syntax from library...")
         json_obj=json_from_exec(exec_path)
+        print("Done.")
+
+        print("Constructing syntax registry...")
         self.registry=SyntaxRegistry(json_obj)
+        print("Done.")
+
         self.available_blocks=self.registry.get_available_blocks()
+
+        print("Configuring objects to enable...")
         self.set_defaults()
+        print("Done.")
+
         # if config_file is not None:
         #     self.load_config(config_file)
+        print("Loading enabled objects...")
         self.load_enabled_objects(json_obj)
+        print("Done.")
 
     def _load_root_syntax(self,block_name, block):
         """
@@ -48,6 +60,7 @@ class Factory():
 
         # Save class constructor
         self.constructors[parent_name][relation][class_name]=new_class
+        print("New constructor constructors[{}][{}][{}]".format(parent_name,relation,class_name))
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
@@ -84,17 +97,24 @@ class Factory():
         mixins=self.root_syntax[root_name]
 
         # Update mixins list by comparing types
-        for relation_type, obj_type in obj_types.items():
-            # Look up type
-            class_now=self.constructors[root_name][relation_type][obj_type]
-            for i_mixin, mixin in enumerate(mixins):
-                if issubclass(class_now,mixin):
-                    mixins[i_mixin]=class_now
-                    break
+        mixin_list=[]
+        for relation_type,derived_type in obj_types.items():
+            if relation_type not in mixins.keys():
+                raise RuntimeError("{} is not an available mix-in".format(relation_type))
+            mixin_base_class=mixins[relation_type]
+
+            # Fetch derived class for mix-in
+            class_now=self.constructors[root_name][relation_type][derived_type]
+
+            # Check provided object type is of the correct type
+            if not issubclass(class_now,mixin_base_class):
+                raise RuntimeError("{} has wrong base class".format(derived_type))
+
+            mixin_list.append(class_now)
 
         # Our fancy new mixin class
         # TODO: define to_dict...
-        new_cls = type(root_name, tuple(mixins),{"__init__":self.__get_init_method(mixins)})
+        new_cls = type(root_name, tuple(mixin_list),{"__init__":self.__get_init_method(mixins)})
         return new_cls
 
     def construct_root(self,root_name,obj_types,kwargs):
@@ -175,7 +195,13 @@ class Factory():
             self.available_blocks[block_name].enabled=block_dict["enabled"]
 
     def set_defaults(self):
-        self.enable_syntax("Mesh")
-        self.enable_syntax("Executioner")
-        self.enable_syntax("Problem")
-        self.enable_syntax("Variables")
+        #self.enable_syntax("Mesh")
+        mesh_enable_dict={
+            "action": ["CreateDisplacedProblemAction",
+                       "DisplayGhostingAction"],
+            "obj_type": ["FileMesh","GeneratedMesh"]
+        }
+        self.enable_syntax("Mesh",enable_dict=mesh_enable_dict)
+        #self.enable_syntax("Executioner")
+        #self.enable_syntax("Problem")
+        #self.enable_syntax("Variables")

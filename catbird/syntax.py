@@ -27,9 +27,9 @@ _relation_shorthands={
 _mixin_map={
     "obj_type": MooseObject,
     "action": MooseAction,
-    "system": MooseCollection,
+    "system": None,
     "collection_type" : MooseCollection,
-    "collection_action":  MooseCollection,
+    "collection_action":  None,
     "nested_system":  None, # The attribute should be added one layer down
     "nested_collection_action": None, # Don't support this syntax
     "nested_collection_type": None, # Don't support this syntax
@@ -201,12 +201,11 @@ class SyntaxBlock():
         return path
 
     def get_mixins(self):
-        mixin_list=[]
+        mixin_dict={}
         for relation_type in self.available_syntax.keys():
             mixin_now=_mixin_map[relation_type]
-            if mixin_now is not None and mixin_now not in mixin_list:
-                mixin_list.append(mixin_now)
-        return mixin_list
+            mixin_dict[relation_type]=mixin_now
+        return mixin_dict
 
 
     @property
@@ -386,8 +385,9 @@ def key_search_recurse(dict_in, test_path, key_test, level_stop=15):
 
     return success_paths
 
-def get_block(json_dict,syntax):
+def fetch_syntax(json_dict,syntax):
     assert isinstance(syntax,SyntaxPath)
+    assert syntax.has_params
 
     key_list=deepcopy(syntax.path)
     assert len(key_list) > 0
@@ -400,22 +400,20 @@ def get_block(json_dict,syntax):
         assert isinstance(obj_now,dict)
         dict_now=deepcopy(obj_now)
 
-    try:
-        assert syntax.has_params
-    except AssertionError:
-        print(syntax.name)
-        print(dict_now.keys())
-        raise AssertionError
-
     return dict_now
 
-def parse_block(json_obj,block_path):
+def parse_block(json_obj,syntax_path):
+    print("Parsing block",syntax_path.unique_key)
     # Available syntax for this block as dict
-    block=get_block(json_obj,block_path)
+    block=fetch_syntax(json_obj,syntax_path)
 
     # Create new subclass of MooseObject with a name that matches the block
-    name=block_path.name
-    new_cls = type(name, (MooseObject,), dict())
+    name=syntax_path.name
+
+    # Deduce type of object
+    relation=_relation_shorthands[syntax_path.parent_relation]
+    class_type=_mixin_map[relation]
+    new_cls = type(name, (class_type,), dict())
 
     # Add parameters as attributes
     params=block["parameters"]
