@@ -16,14 +16,15 @@ class Factory():
         """
         Retreive a tuple of abstract classes to mix to form our root syntax node.
         """
-        assert block.is_root and block.enabled
-        self.root_syntax[block.name]=block.get_mixins()
+        assert not block.is_leaf
+        print("saving root",block_name,block.longname)
+        self.root_syntax[block.longname]=block.get_mixins()
 
-    def _load_leaf_syntax(self,block_name, block,json_obj):
+    def _load_leaf_syntax(self,block_name,block,json_obj):
         """
         Retreive a class with attributes matching the available syntax for the block.
         """
-        assert block.is_leaf and block.enabled
+        assert block.is_leaf
 
         # Convert string to SyntaxPath
         syntax_path=self.registry.syntax_dict[block_name]
@@ -55,12 +56,10 @@ class Factory():
             if  not  block.enabled:
                 continue
 
-            if block.is_leaf:
+            if  block.is_leaf:
                 self._load_leaf_syntax(block_name, block, json_obj)
-            elif  block.is_root:
-                self._load_root_syntax(block_name, block)
             else:
-                print(block_name)
+                self._load_root_syntax(block_name, block)
 
     @staticmethod
     def __get_init_method(mixins):

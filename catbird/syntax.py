@@ -208,6 +208,14 @@ class SyntaxBlock():
                 mixin_list.append(mixin_now)
         return mixin_list
 
+    @property
+    def longname(self):
+        _longname=""
+        for parent_name in self.parent_blocks:
+            _longname=_longname+parent_name+"."
+        _longname=_longname+self.name
+        return _longname
+
     # def __init__(self, _name, _syntax_type, _known_types):
     #     self.name=_name
     #     self.syntax_type=_syntax_type
