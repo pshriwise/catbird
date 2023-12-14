@@ -1,9 +1,7 @@
-from .obj import MooseObject
+from .base import MooseBase
 
-class MooseAction(MooseObject):
+class MooseAction(MooseBase):
+    _moose_action_params=[]
+
     def __init__(self):
         print("I am an action")
-        pass
-
-    def to_str(self,print_default=False):
-        pass
