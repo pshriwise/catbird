@@ -1,3 +1,4 @@
+from copy import deepcopy
 from .syntax import SyntaxRegistry, parse_block
 from .utils import read_json, write_json, json_from_exec
 
@@ -84,6 +85,17 @@ class Factory():
                 base.__init__(self, *args, **kwargs)
         return __init__
 
+    @staticmethod
+    def __get_inner_to_str_method(mixins):
+        # The returned _inner_to_str_ method should call each of the mix-in base class methods in turn and concatenate.
+        def inner_to_str(self,print_default=False):
+            inner_str=""
+            for base in mixins:
+                inner_str+=base.inner_to_str(self)
+            return inner_str
+        return inner_to_str
+
+
     def derive_class(self,root_name,obj_types):
         """
         Form a new mix-in class from a tuple of classes
@@ -97,7 +109,7 @@ class Factory():
         mixins=self.root_syntax[root_name]
 
         # Update mixins list by comparing types
-        mixin_list=[]
+        mixins_now=deepcopy(mixins)
         for relation_type,derived_type in obj_types.items():
             if relation_type not in mixins.keys():
                 raise RuntimeError("{} is not an available mix-in".format(relation_type))
@@ -110,12 +122,24 @@ class Factory():
             if not issubclass(class_now,mixin_base_class):
                 raise RuntimeError("{} has wrong base class".format(derived_type))
 
-            mixin_list.append(class_now)
+            # Update
+            mixins_now[relation_type]=class_now
+
+        # Finally, remove duplicates but preserve order
+        mixin_list=[]
+        for mixin_test in mixins_now.values():
+            if mixin_test not in mixin_list:
+                mixin_list.append(mixin_test)
+
+        # Convert to tuple
+        mixin_tuple=tuple(mixin_list)
 
         # Our fancy new mixin class
-        # TODO: define to_dict...
-        new_cls = type(root_name, tuple(mixin_list),{"__init__":self.__get_init_method(mixins)})
-
+        new_cls = type(root_name, mixin_tuple,
+                       {
+                           "__init__":self.__get_init_method(mixin_tuple),
+                           "inner_to_str":self.__get_inner_to_str_method(mixin_tuple),
+                       })
         return new_cls
 
     def construct_root(self,root_name,obj_types,kwargs):

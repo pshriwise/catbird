@@ -1,4 +1,5 @@
 from abc import ABC
+from .string import MooseString
 
 class MooseParam():
     """
@@ -12,7 +13,7 @@ class MooseParam():
         self.dim=0
         self.doc=""
 
-class MooseBase(ABC):
+class MooseBase(ABC,MooseString):
     """
     Class that can add type-checked properties to itself.
     """
@@ -117,57 +118,6 @@ class MooseBase(ABC):
             moose_param_list_local.append(attr_name)
             setattr(cls,cls.params_name,moose_param_list_local)
 
-
-    @property
-    def moose_params(self):
-        """
-        Return a unified list of all the parameters we've added.
-        """
-        moose_param_list_local=[]
-        if hasattr(self,"_moose_params"):
-            moose_param_list_local.extend(getattr(self,"_moose_params"))
-
-        if hasattr(self,"_moose_action_params"):
-            moose_param_list_local.extend(getattr(self,"_moose_action_params"))
-
-        return moose_param_list_local
-
-    @property
-    def print_name(self):
-        """
-        Return name for printing purposes
-        """
-        class_name=self.__class__.__name__
-        class_path=class_name.split(sep=".")
-        print_name=class_path[-1]
-        return print_name
-
-    @property
-    def indent_level(self):
-        """
-        Return level of indent for printing purposes
-        """
-        class_name=self.__class__.__name__
-        class_path=class_name.split(sep=".")
-        indent_level=len(class_path)
-        return indent_level
-
-    @property
-    def indent(self):
-        indent_str=""
-        for i_level in range(self.indent_level):
-            # Use two space indent
-            indent_str=indent_str+"  "
-        return indent_str
-
-    @property
-    def prepend_indent(self):
-        indent_str=""
-        for i_level in range(self.indent_level-1):
-            # Use two space indent
-            indent_str=indent_str+"  "
-        return indent_str
-
     def is_default(self,attr_name):
         attr_val = getattr(self, attr_name)
         param = getattr(self, "_"+attr_name)
@@ -185,20 +135,3 @@ class MooseBase(ABC):
         if attr_val is not None:
             attr_str=self.indent+'{}={}\n'.format(attr_name,attr_val)
         return attr_str
-
-
-    def to_str(self,print_default=False):
-        syntax_str='{}[{}]\n'.format(self.prepend_indent,self.print_name)
-
-        param_list=self.moose_params
-
-        # Formatting convention, start with type
-        if "type" in  param_list:
-            param_list.remove("type")
-        syntax_str+=self.attr_to_str("type",True)
-
-        for attr_name in param_list:
-            syntax_str+=self.attr_to_str(attr_name,print_default)
-        syntax_str+='{}[]\n'.format(self.prepend_indent)
-
-        return syntax_str

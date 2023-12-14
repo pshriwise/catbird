@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from .obj import MooseObject
 from .action import MooseAction
-from .collection import MooseCollection
+from .collection import *
 
 type_mapping = {'Integer' : int,
                 'Boolean' : bool,
@@ -27,13 +27,25 @@ _relation_shorthands={
 _mixin_map={
     "obj_type": MooseObject,
     "action": MooseAction,
-    "system": None,
+    "system": MooseCollection,
     "collection_type" : MooseCollection,
-    "collection_action":  None,
+    "collection_action": MooseCollection, # Don't support this syntax yet
     "nested_system":  None, # The attribute should be added one layer down
-    "nested_collection_action": None, # Don't support this syntax
-    "nested_collection_type": None, # Don't support this syntax
+    "nested_collection_action": None, # Don't support this syntax yet
+    "nested_collection_type": None, # Don't support this syntax yet
 }
+
+_child_type_map={
+    "obj_type": MooseObject,
+    "action": MooseAction,
+    "system": None,
+    "collection_type" : MooseObject,
+    "collection_action": MooseAction, # Don't support this syntax yet
+    "nested_system":  None, # The attribute should be added one layer down
+    "nested_collection_action": None, # Don't support this syntax yet
+    "nested_collection_type": None, # Don't support this syntax yet
+}
+
 
 def get_relation_kwargs():
     return _relation_shorthands.values()
@@ -204,7 +216,8 @@ class SyntaxBlock():
         mixin_dict={}
         for relation_type in self.available_syntax.keys():
             mixin_now=_mixin_map[relation_type]
-            mixin_dict[relation_type]=mixin_now
+            if mixin_now is not None:
+                mixin_dict[relation_type]=mixin_now
         return mixin_dict
 
 
@@ -403,16 +416,15 @@ def fetch_syntax(json_dict,syntax):
     return dict_now
 
 def parse_block(json_obj,syntax_path):
-    print("Parsing block",syntax_path.unique_key)
     # Available syntax for this block as dict
     block=fetch_syntax(json_obj,syntax_path)
 
     # Create new subclass of MooseObject with a name that matches the block
     name=syntax_path.name
 
-    # Deduce type of object
+    # Deduce type of object by its relation to parent
     relation=_relation_shorthands[syntax_path.parent_relation]
-    class_type=_mixin_map[relation]
+    class_type=_child_type_map[relation]
     new_cls = type(name, (class_type,), dict())
 
     # Add parameters as attributes

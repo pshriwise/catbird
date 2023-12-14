@@ -1,7 +1,9 @@
 from copy import deepcopy
+from .collection import MooseCollection
 from .factory import Factory
 from .syntax import get_relation_kwargs
 
+# TODO should this also be a MooseCollection?
 class MooseModel():
     """Class to represent a MOOSE model"""
     def __init__(self,factory_in):
@@ -18,11 +20,9 @@ class MooseModel():
         self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
         #self.add_syntax("Problem", obj_type="FEProblem")
         #self.add_syntax("Mesh", obj_type="GeneratedMesh")
-
         self.add_syntax("Mesh",
                         obj_type="GeneratedMesh",
                         action="CreateDisplacedProblemAction")
-
         #self.add_syntax("Variables")
 
     #def  add_category(self, category, category_type, syntax_name=""):
@@ -73,12 +73,13 @@ class MooseModel():
         obj=self.factory.construct_root(syntax_name,obj_types,kwargs)
 
         # Add to model
-        self._add_to_model(syntax_name,obj)
+        self._add_to_model(obj)
 
-    def _add_to_model(self,syntax_name,obj):
+    def _add_to_model(self,obj):
         """Add object to the model as an attribute"""
         # Obtain sequence of objects
-        obj_path=syntax_name.split(sep=".")
+        obj_classname=obj.__class__.__name__
+        obj_path=obj_classname.split(sep=".")
 
         # Attribute name (non-capitalised)
         obj_name=obj_path.pop(-1)
@@ -101,9 +102,13 @@ class MooseModel():
             msg="Class {} already has attribute {}".format(parent_obj.__class__.__name__,attr_name)
             raise RuntimeError(msg)
 
-        # Add
+        # Add as attribute
         setattr(parent_obj,attr_name,obj)
 
+        # If the parent is a collection, add there for book-keeping purposes
+        # N.B. this is to support subblock syntax
+        if isinstance(parent_obj,MooseCollection):
+            parent_obj.add(obj,attr_name)
 
     # def add_collection(self, collection_type):
     #     # E.g. Variables, Kernels, BCs, Materials
