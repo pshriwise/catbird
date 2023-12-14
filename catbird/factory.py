@@ -115,6 +115,7 @@ class Factory():
         # Our fancy new mixin class
         # TODO: define to_dict...
         new_cls = type(root_name, tuple(mixin_list),{"__init__":self.__get_init_method(mixins)})
+
         return new_cls
 
     def construct_root(self,root_name,obj_types,kwargs):
@@ -202,6 +203,6 @@ class Factory():
             "obj_type": ["FileMesh","GeneratedMesh"]
         }
         self.enable_syntax("Mesh",enable_dict=mesh_enable_dict)
-        #self.enable_syntax("Executioner")
+        self.enable_syntax("Executioner")
         #self.enable_syntax("Problem")
         #self.enable_syntax("Variables")

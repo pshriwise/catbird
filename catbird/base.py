@@ -109,17 +109,13 @@ class MooseBase(ABC):
         setattr(cls, attr_name, cls.moose_property(attr_name,moose_param))
 
         # Keep track of the attributes we've added
-        # Cheeky coding to avoid downstream clashes with mixins
         params_name=None
-        if hasattr(cls,"_moose_params"):
-            params_name="_moose_params"
-        elif hasattr(cls,"_moose_action_params"):
-            params_name="_moose_action_params"
-
-        if params_name:
-            moose_param_list_local=getattr(cls,params_name)
+        if cls.params_name:
+            if not hasattr(cls,cls.params_name):
+                setattr(cls,cls.params_name,[])
+            moose_param_list_local=getattr(cls,cls.params_name)
             moose_param_list_local.append(attr_name)
-            setattr(cls,params_name,moose_param_list_local)
+            setattr(cls,cls.params_name,moose_param_list_local)
 
 
     @property
@@ -135,3 +131,74 @@ class MooseBase(ABC):
             moose_param_list_local.extend(getattr(self,"_moose_action_params"))
 
         return moose_param_list_local
+
+    @property
+    def print_name(self):
+        """
+        Return name for printing purposes
+        """
+        class_name=self.__class__.__name__
+        class_path=class_name.split(sep=".")
+        print_name=class_path[-1]
+        return print_name
+
+    @property
+    def indent_level(self):
+        """
+        Return level of indent for printing purposes
+        """
+        class_name=self.__class__.__name__
+        class_path=class_name.split(sep=".")
+        indent_level=len(class_path)
+        return indent_level
+
+    @property
+    def indent(self):
+        indent_str=""
+        for i_level in range(self.indent_level):
+            # Use two space indent
+            indent_str=indent_str+"  "
+        return indent_str
+
+    @property
+    def prepend_indent(self):
+        indent_str=""
+        for i_level in range(self.indent_level-1):
+            # Use two space indent
+            indent_str=indent_str+"  "
+        return indent_str
+
+    def is_default(self,attr_name):
+        attr_val = getattr(self, attr_name)
+        param = getattr(self, "_"+attr_name)
+        default_val = param.default
+        if default_val is None:
+            default_val = param.attr_type()
+        return attr_val == default_val
+
+    def attr_to_str(self,attr_name,print_default=False):
+        attr_str=""
+        if self.is_default(attr_name) and not print_default:
+            return attr_str
+
+        attr_val = getattr(self, attr_name)
+        if attr_val is not None:
+            attr_str=self.indent+'{}={}\n'.format(attr_name,attr_val)
+        return attr_str
+
+
+    def to_str(self,print_default=False):
+        syntax_str='{}[{}]\n'.format(self.prepend_indent,self.print_name)
+
+        param_list=self.moose_params
+
+        # Formatting convention, start with type
+        if "type" in  param_list:
+            param_list.remove("type")
+        syntax_str+=self.attr_to_str("type",True)
+
+        for attr_name in param_list:
+            syntax_str+=self.attr_to_str(attr_name,print_default)
+        syntax_str+='{}[]\n'.format(self.prepend_indent)
+
+        return syntax_str
