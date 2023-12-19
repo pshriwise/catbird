@@ -9,7 +9,7 @@ class MooseModel():
     def __init__(self,factory_in):
         assert isinstance(factory_in,Factory)
         self.factory=factory_in
-        #self.moose_objects={}
+        self.moose_objects=[]
 
         # Add attributes to this model with default assignments
         self.load_default_syntax()
@@ -18,43 +18,11 @@ class MooseModel():
     def load_default_syntax(self):
         self.add_syntax("Executioner", obj_type="Steady")
         self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
-        #self.add_syntax("Problem", obj_type="FEProblem")
-        #self.add_syntax("Mesh", obj_type="GeneratedMesh")
-        #self.add_syntax("Mesh",
-        #                obj_type="GeneratedMesh",
-        #                action="CreateDisplacedProblemAction")
+        self.add_syntax("Problem", obj_type="FEProblem")
+        self.add_syntax("Mesh",
+                        obj_type="GeneratedMesh",
+                        action="CreateDisplacedProblemAction")
         self.add_syntax("Variables")
-
-    #def  add_category(self, category, category_type, syntax_name=""):
-    # # Ensure this is valid syntax
-        # if category not in self.factory.constructors.keys():
-        #     msg="Invalid block type {}".format(category)
-        #     raise RuntimeError(msg)
-
-        # # First look up the syntax type
-        # syntax_type=self.factory.available_blocks[category].syntax_type
-
-        # # How to add depends on syntax type
-        # if syntax_type == "fundamental":
-        #     # If fundmantal, just add. We're done.
-        #     self.add_object(category,category_type)
-        # elif syntax_type == "nested":
-        #     if not hasattr(self,category):
-        #         self.add_collection(category)
-        #     self.add_to_collection(category,category_type,syntax_name)
-        # elif syntax_type == "system":
-        #     raise NotImplementedError()
-        # elif syntax_type == "nested_system":
-        #     raise NotImplementedError()
-        # else:
-        #     msg="Unhandled syntax type {}".format(syntax_type)
-        #     raise RuntimeError(msg)
-
-        # # Object has been constructed, now just book-keeping
-        # category_key=category.lower()
-        # if category_key not in self.moose_objects.keys():
-        #     self.moose_objects[category_key]=list()
-        # self.moose_objects[category_key].append(category_type)
 
     def add_syntax(self,syntax_name,**kwargs_in):
         """
@@ -110,16 +78,9 @@ class MooseModel():
         if isinstance(parent_obj,MooseCollection):
             parent_obj.add(obj,attr_name)
 
-    # def add_collection(self, collection_type):
-    #     # E.g. Variables, Kernels, BCs, Materials
-    #     # Create new subclass of with a name that matches the collection_type
-    #     new_cls = type(collection_type, (MOOSECollection,), dict())
-
-    #     # Prefer non-capitalised attributes
-    #     attr_name=collection_type.lower()
-
-    #     # Construct and add the to model
-    #     setattr(self, attr_name, new_cls())
+        # Book-keeping
+        if parent_obj == self:
+            self.moose_objects.append(attr_name)
 
     def add_to_collection(self, collection_name, object_name,**kwargs_in):
         # First, pop out any relation key-word args
@@ -157,18 +118,19 @@ class MooseModel():
     # Some short-hands for common operations
     def add_variable(self,variable_name,variable_type="MooseVariable"):
         self.add_to_collection("Variables",variable_name,collection_type=variable_type,order="SECOND")
+
     # def add_bc(self):
     #     raise NotImplementedError
 
     # def add_ic(self):
     #     raise NotImplementedError
 
-    # def to_str(self,print_default=False):
-    #     model_str=""
-    #     for obj_type in self.moose_objects:
-    #         obj=getattr(self,obj_type)
-    #         model_str+=obj.to_str(print_default)
-    #     return model_str
+    def to_str(self,print_default=False):
+        model_str=""
+        for obj_type in self.moose_objects:
+            obj=getattr(self,obj_type)
+            model_str+=obj.to_str(print_default)
+        return model_str
 
     # def write(self, filename):
     #     file_handle = open(filename,'w')
