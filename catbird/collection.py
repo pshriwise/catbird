@@ -22,7 +22,7 @@ class MooseCollection(MutableSet,MooseString):
     def _check_type(self,obj):
         assert issubclass(type(obj),MooseBase)
 
-    def add(self,obj,lookup_name,as_attribute=False):
+    def add(self,obj,lookup_name):
         # Type checking on object, raise an error if fails
         self._check_type(obj)
 
