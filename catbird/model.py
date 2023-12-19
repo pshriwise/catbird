@@ -91,7 +91,6 @@ class MooseModel():
             if keyword in relations:
                 obj_type_value = kwargs.pop(keyword)
                 obj_type_kwargs[keyword]=obj_type_value
-                print(keyword,obj_type_value)
 
         relations=list(obj_type_kwargs.keys())
         obj_classes=list(obj_type_kwargs.values())
@@ -116,14 +115,10 @@ class MooseModel():
         collection.add(obj,object_name)
 
     # Some short-hands for common operations
-    def add_variable(self,variable_name,variable_type="MooseVariable"):
-        self.add_to_collection("Variables",variable_name,collection_type=variable_type,order="SECOND")
-
-    # def add_bc(self):
-    #     raise NotImplementedError
-
-    # def add_ic(self):
-    #     raise NotImplementedError
+    def add_variable(self,variable_name,variable_type="MooseVariable",**kwargs_in):
+        collection_kwargs=deepcopy(kwargs_in)
+        collection_kwargs["collection_type"]=variable_type
+        self.add_to_collection("Variables",variable_name,**collection_kwargs)
 
     def to_str(self,print_default=False):
         model_str=""
@@ -132,8 +127,8 @@ class MooseModel():
             model_str+=obj.to_str(print_default)
         return model_str
 
-    # def write(self, filename):
-    #     file_handle = open(filename,'w')
-    #     file_handle.write(self.to_str())
-    #     file_handle.close()
-    #     print("Wrote to ",filename)
+    def write(self, filename):
+        file_handle = open(filename,'w')
+        file_handle.write(self.to_str())
+        file_handle.close()
+        print("Wrote to ",filename)

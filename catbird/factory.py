@@ -62,7 +62,7 @@ class Factory():
 
         # Save class constructor
         self.constructors[parent_name][relation][lookup_name]=new_class
-        print("New constructor constructors[{}][{}][{}]={}".format(parent_name,relation,lookup_name,class_name))
+
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
@@ -166,12 +166,11 @@ class Factory():
 
     def construct(self,root_name,relation_type,derived_type, **kwargs):
         print(root_name,relation_type,derived_type)
-        
+
         class_now=self.constructors[root_name][relation_type][derived_type]
         obj=class_now()
         # Handle keyword arguments
         for key, value in kwargs.items():
-            print(key,value)
             if not hasattr(obj,key):
                 msg="Object type {} does not have attribute {}".format(root_name,key)
                 raise RuntimeError()
