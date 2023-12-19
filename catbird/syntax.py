@@ -415,12 +415,12 @@ def fetch_syntax(json_dict,syntax):
 
     return dict_now
 
-def parse_block(json_obj,syntax_path):
+def parse_block(json_obj,syntax_path,class_name):
     # Available syntax for this block as dict
     block=fetch_syntax(json_obj,syntax_path)
 
     # Create new subclass of MooseObject with a name that matches the block
-    name=syntax_path.name
+    name=class_name
 
     # Deduce type of object by its relation to parent
     relation=_relation_shorthands[syntax_path.parent_relation]

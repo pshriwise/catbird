@@ -20,10 +20,10 @@ class MooseModel():
         self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
         #self.add_syntax("Problem", obj_type="FEProblem")
         #self.add_syntax("Mesh", obj_type="GeneratedMesh")
-        self.add_syntax("Mesh",
-                        obj_type="GeneratedMesh",
-                        action="CreateDisplacedProblemAction")
-        #self.add_syntax("Variables")
+        #self.add_syntax("Mesh",
+        #                obj_type="GeneratedMesh",
+        #                action="CreateDisplacedProblemAction")
+        self.add_syntax("Variables")
 
     #def  add_category(self, category, category_type, syntax_name=""):
     # # Ensure this is valid syntax
@@ -121,27 +121,42 @@ class MooseModel():
     #     # Construct and add the to model
     #     setattr(self, attr_name, new_cls())
 
-    # def add_to_collection(self, collection_type, object_type, syntax_name, **kwargs):
-    #     raise NotImplementedError
+    def add_to_collection(self, collection_name, object_name,**kwargs_in):
+        # First, pop out any relation key-word args
+        obj_type_kwargs={}
+        relations=get_relation_kwargs()
+        kwargs=deepcopy(kwargs_in)
+        for keyword in kwargs_in.keys():
+            if keyword in relations:
+                obj_type_value = kwargs.pop(keyword)
+                obj_type_kwargs[keyword]=obj_type_value
+                print(keyword,obj_type_value)
 
-    #     # Construct object
-    #     obj=self.factory.construct(collection_type,object_type,**kwargs)
-    #     if syntax_name=="":
-    #         raise RuntimeError("Must supply syntax_name for nested syntax")
+        relations=list(obj_type_kwargs.keys())
+        obj_classes=list(obj_type_kwargs.values())
 
-    #     obj.set_syntax_name(syntax_name)
+        # If more than one type, error!
+        if len(relations) > 1:
+            msg="Cannot add mixin types to collection"
+            raise RuntimeError(msg)
 
-    #     # Obtain the object for this collection type
-    #     collection = getattr(self, collection_type.lower())
+        # One basic type is mandatory
+        if len(relations) == 0:
+            msg="Must specify a relation type"
+            raise RuntimeError(msg)
 
-    #     # Store in collection
-    #     collection.add(obj)
+        relation=relations[0]
+        obj_class_name=obj_classes[0]
 
-    # # Some short-hands for common operations
-    # def add_variable(self,name,variable_type="MooseVariable"):
-    #     raise NotImplementedError
-    #     #self.add_category("Variables",variable_type,name)
+        obj=self.factory.construct(collection_name,relation,obj_class_name,**kwargs)
 
+        # Fetch collection and add
+        collection = getattr(self, collection_name.lower())
+        collection.add(obj,object_name)
+
+    # Some short-hands for common operations
+    def add_variable(self,variable_name,variable_type="MooseVariable"):
+        self.add_to_collection("Variables",variable_name,collection_type=variable_type,order="SECOND")
     # def add_bc(self):
     #     raise NotImplementedError
 

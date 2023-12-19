@@ -26,11 +26,15 @@ class MooseCollection(MutableSet,MooseString):
         # Type checking on object, raise an error if fails
         self._check_type(obj)
 
+        # Set the name of the object
+        obj.set_lookup_name(lookup_name)
+
+        # Don't dupicate entries in collection
         if lookup_name in self.objects.keys():
             msg="Collection already contains named block {}".format(block_name)
             raise RuntimeError(msg)
 
-        # Index
+        # Save
         self.objects[lookup_name]=obj
 
     def discard(self,key):

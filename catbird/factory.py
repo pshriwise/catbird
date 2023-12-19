@@ -40,14 +40,15 @@ class Factory():
 
         # Some details about the type of object
         relation=block.relation_key
-        class_name=block.name
+        lookup_name=block.name
+        class_name=block.longname
         parent_name=block.parent_longname
 
         # Convert string to SyntaxPath
         syntax_path=self.registry.syntax_dict[block_name]
 
         # Fetch syntax for block and make a new object type
-        new_class=parse_block(json_obj,syntax_path)
+        new_class=parse_block(json_obj,syntax_path,class_name)
 
         # Ensure dictionary initialised
         if parent_name not in self.constructors.keys():
@@ -60,8 +61,8 @@ class Factory():
             raise RuntimeError("Duplicated class name {} in namespace {}.{}".format(class_name,parent_name,relation))
 
         # Save class constructor
-        self.constructors[parent_name][relation][class_name]=new_class
-        print("New constructor constructors[{}][{}][{}]".format(parent_name,relation,class_name))
+        self.constructors[parent_name][relation][lookup_name]=new_class
+        print("New constructor constructors[{}][{}][{}]={}".format(parent_name,relation,lookup_name,class_name))
 
     def load_enabled_objects(self,json_obj):
         self.constructors={}
@@ -163,6 +164,20 @@ class Factory():
 
         return obj
 
+    def construct(self,root_name,relation_type,derived_type, **kwargs):
+        print(root_name,relation_type,derived_type)
+        
+        class_now=self.constructors[root_name][relation_type][derived_type]
+        obj=class_now()
+        # Handle keyword arguments
+        for key, value in kwargs.items():
+            print(key,value)
+            if not hasattr(obj,key):
+                msg="Object type {} does not have attribute {}".format(root_name,key)
+                raise RuntimeError()
+            setattr(obj, key, value)
+        return obj
+
     def enable_syntax(self,block_name,enable_dict=None):
         """
         Configure what MOOSE syntax to enable.
@@ -204,7 +219,6 @@ class Factory():
                         new_syntax=block_now.path_to_child(relation_shortname,syntax_item)
                         syntax_to_enable.append(new_syntax)
 
-
     def write_config(self,filename,print_depth=3,verbose=False):
         config_dict={}
         for block_name, block in self.available_blocks.items():
@@ -226,7 +240,7 @@ class Factory():
                        "DisplayGhostingAction"],
             "obj_type": ["FileMesh","GeneratedMesh"]
         }
-        self.enable_syntax("Mesh",enable_dict=mesh_enable_dict)
+        #self.enable_syntax("Mesh",enable_dict=mesh_enable_dict)
         self.enable_syntax("Executioner")
         #self.enable_syntax("Problem")
-        #self.enable_syntax("Variables")
+        self.enable_syntax("Variables")
