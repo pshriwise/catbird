@@ -96,6 +96,12 @@ class Factory():
             return inner_str
         return inner_to_str
 
+    @staticmethod
+    def __get_docstring(mixins):
+        doc_now="Fa la la la la la la la la\n"
+        for base in mixins:
+            doc_now=doc_now+base.moose_doc(base)
+        return doc_now
 
     def derive_class(self,root_name,obj_types):
         """
@@ -135,10 +141,15 @@ class Factory():
         # Convert to tuple
         mixin_tuple=tuple(mixin_list)
 
+
+        #doc_str_now=self.__get_docstring(mixin_tuple)
+        #print(doc_str_now)
+
         # Our fancy new mixin class
         new_cls = type(root_name, mixin_tuple,
                        {
-                           "__init__":self.__get_init_method(mixin_tuple),
+                           "__init__": self.__get_init_method(mixin_tuple),
+                           "__doc__": self.__get_docstring(mixin_tuple),
                            "inner_to_str":self.__get_inner_to_str_method(mixin_tuple),
                        })
         return new_cls

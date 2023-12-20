@@ -425,7 +425,10 @@ def parse_block(json_obj,syntax_path,class_name):
     # Deduce type of object by its relation to parent
     relation=_relation_shorthands[syntax_path.parent_relation]
     class_type=_child_type_map[relation]
-    new_cls = type(name, (class_type,), dict())
+
+    #print(class_type().moose_doc)
+    new_cls = type(name,
+                   (class_type,),dict())
 
     # Add parameters as attributes
     params=block["parameters"]

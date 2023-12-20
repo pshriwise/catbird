@@ -4,7 +4,7 @@ class MooseAction(MooseBase):
     params_name="_moose_action_params"
 
     def __init__(self):
-        pass
+        super().__init__()
 
     @property
     def moose_action_params(self):
@@ -13,7 +13,8 @@ class MooseAction(MooseBase):
         """
         moose_param_list_local=[]
         if hasattr(self,"_moose_action_params"):
-            moose_param_list_local=getattr(self,"_moose_action_params")
+            moose_param_dict_local=getattr(self,"_moose_action_params")
+            moose_param_list_local=list(moose_param_dict_local.keys())
         return moose_param_list_local
 
     def inner_to_str(self,print_default=False):

@@ -68,3 +68,7 @@ class MooseString():
     def inner_to_str(self,print_default=False):
         # Override me
         pass
+
+    def moose_doc(self):
+        # Override me
+        return ""
