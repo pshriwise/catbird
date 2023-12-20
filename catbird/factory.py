@@ -173,7 +173,7 @@ class Factory():
         for key, value in kwargs.items():
             if not hasattr(obj,key):
                 msg="Object type {} does not have attribute {}".format(root_name,key)
-                raise RuntimeError()
+                raise RuntimeError(msg)
             setattr(obj, key, value)
         return obj
 
