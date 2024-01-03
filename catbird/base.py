@@ -77,5 +77,33 @@ class MooseBase(ABC,MooseString):
             attr_str=self.indent+'{}={}\n'.format(attr_name,attr_val)
         return attr_str
 
-    def moose_doc(self):
-        pass
+    @classmethod
+    def moose_doc(cls, param_list):
+        """Generate documentation for all the MOOSE parameters"""
+        # Obtain class info for header
+        class_string=''
+        if hasattr(cls,'class_alias'):
+            class_name_now=getattr(cls,'class_alias')
+            class_string=" "+class_name_now
+        param_string='MOOSE'+class_string+' Parameters'
+        dash_len=len(param_string)
+        dashes=''.ljust(dash_len,"-")
+
+        # Write header
+        doc_now=param_string
+        doc_now+="\n"+dashes
+
+        # Loop over parameters' documentation
+        for param in param_list:
+            assert isinstance(param,MooseParam)
+            # We don't document the type as it is fixed
+            if param.name == "type":
+                continue
+            doc_now=doc_now+param.doc
+
+        # Footer
+        more_dashes=''.ljust(65,"-")
+        doc_now+=more_dashes
+        doc_now+="\n"
+
+        return doc_now

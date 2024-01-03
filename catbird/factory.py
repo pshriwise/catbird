@@ -101,7 +101,8 @@ class Factory():
         # Generate a docstring for new class from the docs of each mix-in
         doc_now=""
         for base in mixins:
-            doc_now=doc_now+base.moose_doc(base)
+            if base.__doc__ is not None:
+                doc_now=doc_now+base.__doc__
         return doc_now
 
     def derive_class(self,root_name,obj_types):
@@ -142,10 +143,6 @@ class Factory():
         # Convert to tuple
         mixin_tuple=tuple(mixin_list)
 
-
-        #doc_str_now=self.__get_docstring(mixin_tuple)
-        #print(doc_str_now)
-
         # Our fancy new mixin class
         new_cls = type(root_name, mixin_tuple,
                        {
@@ -177,8 +174,6 @@ class Factory():
         return obj
 
     def construct(self,root_name,relation_type,derived_type, **kwargs):
-        print(root_name,relation_type,derived_type)
-
         class_now=self.constructors[root_name][relation_type][derived_type]
         obj=class_now()
         # Handle keyword arguments

@@ -417,22 +417,37 @@ def fetch_syntax(json_dict,syntax):
     return dict_now
 
 def parse_block(json_obj,syntax_path,class_name):
-    # Available syntax for this block as dict
-    block=fetch_syntax(json_obj,syntax_path)
-
-    # Create new subclass with a name that matches the block
-    name=class_name
+    # Construct Moose parameters
+    moose_param_list=get_params_list(json_obj,syntax_path)
 
     # Deduce type of object by its relation to parent
     relation=_relation_shorthands[syntax_path.parent_relation]
     class_type=_child_type_map[relation]
 
-    #print(class_type().moose_doc)
-    new_cls = type(name,
-                   (class_type,),dict())
+    # Generate class documentation
+    doc_now=class_type.moose_doc(moose_param_list)
 
-    # Add parameters as attributes
+    # Create new class with a name that matches the block
+    new_cls = type(class_name,
+                   (class_type,),
+                   {
+                       "__doc__": doc_now,
+                   })
+
+    # Add the parameters to the class
+    for moose_param in moose_param_list:
+        new_cls.add_moose_param(moose_param)
+
+    # Return our new class
+    return new_cls
+
+def get_params_list(json_obj,syntax_path):
+    # Available syntax for this block as dict
+    block=fetch_syntax(json_obj,syntax_path)
+
+    # Lift parameters dictionary
     params=block["parameters"]
+    moose_param_list=[]
     for param_name, param_info in params.items():
         # Determine the type of the parameter
         attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
@@ -469,11 +484,11 @@ def parse_block(json_obj,syntax_path,class_name):
                                dim=ndim,
                                allowed_vals=allowed_values)
 
-        new_cls.add_moose_param(moose_param)
+        moose_param_list.append(moose_param)
 
+    # Return list
+    return moose_param_list
 
-    # Return our new class
-    return new_cls
 
 # convenience function for converting types
 def _convert_to_type(t, val):
