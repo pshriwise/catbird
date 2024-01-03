@@ -7,23 +7,20 @@ class Factory():
     def __init__(self,exec_path,config_file=None):
         print("Loading syntax from library...")
         json_obj=json_from_exec(exec_path)
-        print("Done.")
 
         print("Constructing syntax registry...")
         self.registry=SyntaxRegistry(json_obj)
-        print("Done.")
-
-        self.available_blocks=self.registry.get_available_blocks()
 
         print("Configuring objects to enable...")
+        self.available_blocks=self.registry.get_available_blocks()
         self.set_defaults()
-        print("Done.")
 
-        # if config_file is not None:
-        #     self.load_config(config_file)
+        if config_file is not None:
+            print("Loading configuration from file",config_file)
+            self.load_config(config_file)
+
         print("Loading enabled objects...")
         self.load_enabled_objects(json_obj)
-        print("Done.")
 
     def _load_root_syntax(self,block_name, block):
         """
@@ -240,7 +237,6 @@ class Factory():
             self.available_blocks[block_name].enabled=block_dict["enabled"]
 
     def set_defaults(self):
-        #self.enable_syntax("Mesh")
         mesh_enable_dict={
             "action": ["CreateDisplacedProblemAction",
                        "DisplayGhostingAction"],
