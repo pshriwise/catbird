@@ -29,7 +29,7 @@ class MooseCollection(MutableSet,MooseString):
         # Set the name of the object
         obj.set_lookup_name(lookup_name)
 
-        # Don't dupicate entries in collection
+        # Don't duplicate entries in collection
         if lookup_name in self.objects.keys():
             msg="Collection already contains named block {}".format(block_name)
             raise RuntimeError(msg)

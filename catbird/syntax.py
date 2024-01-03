@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from .obj import MooseObject
 from .action import MooseAction
+from .param import MooseParam
 from .collection import *
 
 type_mapping = {'Integer' : int,
@@ -419,7 +420,7 @@ def parse_block(json_obj,syntax_path,class_name):
     # Available syntax for this block as dict
     block=fetch_syntax(json_obj,syntax_path)
 
-    # Create new subclass of MooseObject with a name that matches the block
+    # Create new subclass with a name that matches the block
     name=class_name
 
     # Deduce type of object by its relation to parent
@@ -460,13 +461,15 @@ def parse_block(json_obj,syntax_path,class_name):
             else:
                 default = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
 
-        # Add an attribute to the class instance for this parameter
-        new_cls.newattr(param_name,
-                        attr_type,
-                        description=param_info.get('description'),
-                        default=default,
-                        dim=ndim,
-                        allowed_vals=allowed_values)
+        # Create and add a MOOSE parameter
+        moose_param=MooseParam(param_name,
+                               attr_type,
+                               description=param_info.get('description'),
+                               default=default,
+                               dim=ndim,
+                               allowed_vals=allowed_values)
+
+        new_cls.add_moose_param(moose_param)
 
 
     # Return our new class
