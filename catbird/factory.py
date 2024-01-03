@@ -98,7 +98,8 @@ class Factory():
 
     @staticmethod
     def __get_docstring(mixins):
-        doc_now="Fa la la la la la la la la\n"
+        # Generate a docstring for new class from the docs of each mix-in
+        doc_now=""
         for base in mixins:
             doc_now=doc_now+base.moose_doc(base)
         return doc_now

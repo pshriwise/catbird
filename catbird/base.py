@@ -84,8 +84,6 @@ class MooseBase(ABC,MooseString):
 
 
     def __init__(self):
-        print("In the MooseBase init method of ",self.__class__.__name__)
-
         # List of the attributes this class should have
         moose_param_dict_local=getattr(self,self.params_name)
 
@@ -170,11 +168,17 @@ class MooseBase(ABC,MooseString):
             raise RuntimeError(msg)
 
         # Set attribute docstring
-        doc_str = f'\nType: {attr_type.__name__}\n'
-        if description is not None:
+        doc_str = '\n'
+        doc_str += attr_name+' : '
+        doc_str += f'{attr_type.__name__}\n'
+        if description is not None and description != "":
+            doc_str += "  "
             doc_str += description
+            doc_str += "\n"
         if allowed_vals is not None:
-            doc_str += f'\nValues: {allowed_vals}'
+            doc_str += f'  Allowed values: {allowed_vals}\n'
+        if default is not None:
+            doc_str += f'  Default value: {default}\n'
 
         # Store parameter details in a structure
         moose_param=MooseParam()
@@ -221,11 +225,4 @@ class MooseBase(ABC,MooseString):
         return attr_str
 
     def moose_doc(self):
-        doc_now="Custom MooseBase docstring\n"
-        #     moose_param_dict_local={}
-        #     if hasattr(self,"_moose_params"):
-        #         moose_param_dict_local=getattr(self,"_moose_params")
-        #     for attr_name, param in moose_param_dict_local.items():
-        #         doc_now=doc_now+param.doc
-        #     docs_now=super().__doc__+doc_now
-        return doc_now
+        pass
