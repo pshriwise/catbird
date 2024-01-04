@@ -77,10 +77,26 @@ class Factory():
 
     @staticmethod
     def __get_init_method(mixins):
-        # The returned init method should call each of the mix-in base class init methods in turn.
         def __init__(self, *args, **kwargs):
             for base in mixins:
-                base.__init__(self, *args, **kwargs)
+                # This mix-in does not have parameters at all
+                if not hasattr(base,"params_name"):
+                    base.__init__(self, *args, **kwargs)
+                    continue
+
+                # Might not have enabled any parameters for this mix-in
+                if not hasattr(self,base.params_name):
+                    continue
+
+                # Dictionary of the attributes this base class should have
+                moose_param_dict_local=getattr(self,base.params_name)
+
+                # Loop over and make into properties
+                for attr_name, moose_param in moose_param_dict_local.items():
+                    # Crucially, acts on the instance, not the class.
+                    setattr(self,attr_name,moose_param.val)
+            #Todo: apply kwargs
+
         return __init__
 
     @staticmethod
@@ -92,6 +108,28 @@ class Factory():
                 inner_str+=base.inner_to_str(self)
             return inner_str
         return inner_to_str
+
+    @staticmethod
+    def __get_get_param_method(mixins):
+        def get_param(self,attr_name):
+            # Search each base in turn
+            param=None
+            for base in mixins:
+                # Skip mix-ins with no parameters
+                if not hasattr(base,"params_name"):
+                    continue
+                try:
+                    dict_now=getattr(self,base.params_name)
+                    param=dict_now[attr_name]
+                    break
+                except KeyError:
+                    continue
+
+            if param is None:
+                msg="Could not find MOOSE param for attribute {}".format(attr_name)
+                raise KeyError(msg)
+            return param
+        return get_param
 
     @staticmethod
     def __get_docstring(mixins):
@@ -146,6 +184,7 @@ class Factory():
                            "__init__": self.__get_init_method(mixin_tuple),
                            "__doc__": self.__get_docstring(mixin_tuple),
                            "inner_to_str":self.__get_inner_to_str_method(mixin_tuple),
+                           "get_param":self.__get_get_param_method(mixin_tuple),
                        })
         return new_cls
 

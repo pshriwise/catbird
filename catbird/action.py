@@ -5,7 +5,14 @@ class MooseAction(MooseBase):
     class_alias="Action"
 
     def __init__(self):
-        super().__init__()
+        if hasattr(self,"_action_moose_params"):
+            # Dictionary of the attributes this class should have
+            moose_param_dict_local=getattr(self,"_moose_action_params")
+
+            # Loop over and make into attributes
+            for attr_name, moose_param in moose_param_dict_local.items():
+                # Crucially, acts on the instance, not the class.
+                setattr(self,attr_name,moose_param.val)
 
     @property
     def moose_action_params(self):

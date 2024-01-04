@@ -14,14 +14,6 @@ class MooseBase(ABC,MooseString):
                 raise ValueError(msg)
         super().__setattr__(attr_name, value)
 
-    def __init__(self):
-        # List of the attributes this class should have
-        moose_param_dict_local=getattr(self,self.params_name)
-
-        # Loop over and make into properties
-        for attr_name, moose_param in moose_param_dict_local.items():
-            # Crucially, acts on the instance, not the class.
-            setattr(self,attr_name,moose_param.val)
 
     @staticmethod
     def check_type(name, val, attr_type):
@@ -58,13 +50,25 @@ class MooseBase(ABC,MooseString):
             moose_param_dict_local[attr_name]=moose_param
             setattr(cls,cls.params_name,moose_param_dict_local)
 
+    def get_param(self,attr_name):
+        """Return MooseParam corresponding to attribute name.
+
+        Raise KeyError if not found.
+        """
+        dict_now=getattr(self,self.params_name)
+        return dict_now[attr_name]
 
     def is_default(self,attr_name):
+        # Get current value
         attr_val = getattr(self, attr_name)
-        param = getattr(self, "_"+attr_name)
+
+        # Look up the default value
+        param=self.get_param(attr_name)
         default_val = param.default
         if default_val is None:
             default_val = param.attr_type()
+
+        # Compare and return
         return attr_val == default_val
 
     def attr_to_str(self,attr_name,print_default=False):
