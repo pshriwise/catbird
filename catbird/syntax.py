@@ -47,7 +47,6 @@ _child_type_map={
     "nested_collection_type": None, # Don't support this syntax yet
 }
 
-
 def get_relation_kwargs():
     return _relation_shorthands.values()
 
@@ -106,7 +105,6 @@ class SyntaxPath():
             if relation_path:
                 _parent_relation=self._key_from_list(relation_path)
                 if _parent_relation not in _relation_shorthands.keys():
-                    print(syntax_path_in)
                     raise RuntimeError("unknown relation type: {}",format(_parent_relation))
                 self.parent_relation=_parent_relation
 
@@ -448,8 +446,8 @@ def get_params_list(json_obj,syntax_path):
     # Lift parameters dictionary
     params=block["parameters"]
     moose_param_list=[]
+
     for param_name, param_info in params.items():
-        # Determine the type of the parameter
         attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
         attr_type = attr_types[-1]
 
@@ -471,10 +469,14 @@ def get_params_list(json_obj,syntax_path):
         # properties in the type definition as they are now
         default = None
         if 'default' in param_info.keys() and param_info['default'] != None and param_info['default'] != '':
-            if ndim == 0:
-                default = _convert_to_type(attr_type, param_info['default'])
+            if ndim > 0 and attr_type != str :
+                defaults = param_info['default']
+                if type(defaults) == str:
+                    default = [_convert_to_type(attr_type, v) for v in defaults.split()]
+                else:
+                    default = [_convert_to_type(attr_type, v) for v in defaults]
             else:
-                default = [_convert_to_type(attr_type, v) for v in param_info['default'].split()]
+                default = _convert_to_type(attr_type, param_info['default'])
 
         # Create and add a MOOSE parameter
         moose_param=MooseParam(param_name,

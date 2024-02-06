@@ -6,13 +6,17 @@ class MooseBase(ABC,MooseString):
     """
     Class that can add type-checked properties to itself.
     """
-    def __setattr__(self, attr_name, value):
+    def __setattr__(self, attr_name, value_in):
+        value_to_set=value_in
         if hasattr(self,attr_name):
             type_now=type(getattr(self,attr_name))
-            if not isinstance(value,type_now):
-                msg="Attribute {} should have type {}".format(attr_name,type_now)
-                raise ValueError(msg)
-        super().__setattr__(attr_name, value)
+            if not isinstance(value_in,type_now):
+                try:
+                    value_to_set=type_now(value_in)
+                except ValueError:
+                    msg="Attribute {} should have type {}".format(attr_name,type_now)
+                    raise ValueError(msg)
+        super().__setattr__(attr_name, value_to_set)
 
 
     @staticmethod
