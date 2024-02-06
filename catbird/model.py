@@ -17,12 +17,17 @@ class MooseModel():
     # Envisage this being overridden downstream.
     def load_default_syntax(self):
         self.add_syntax("Executioner", obj_type="Steady")
-        self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
+        #self.add_syntax("Executioner.Predictor",obj_type="AdamsPredictor")
         self.add_syntax("Problem", obj_type="FEProblem")
         self.add_syntax("Mesh",
                         obj_type="GeneratedMesh",
                         action="CreateDisplacedProblemAction")
         self.add_syntax("Variables")
+        self.add_syntax("Kernels")
+        self.add_syntax("Materials")
+        self.add_syntax("BCs")
+        self.add_syntax("Outputs")
+
 
     def add_syntax(self,syntax_name,**kwargs_in):
         """
@@ -84,31 +89,21 @@ class MooseModel():
 
     def add_to_collection(self, collection_name, object_name,**kwargs_in):
         # First, pop out any relation key-word args
-        obj_type_kwargs={}
+        obj_types={}
         relations=get_relation_kwargs()
         kwargs=deepcopy(kwargs_in)
         for keyword in kwargs_in.keys():
             if keyword in relations:
                 obj_type_value = kwargs.pop(keyword)
-                obj_type_kwargs[keyword]=obj_type_value
+                obj_types[keyword]=obj_type_value
 
-        relations=list(obj_type_kwargs.keys())
-        obj_classes=list(obj_type_kwargs.values())
-
-        # If more than one type, error!
-        if len(relations) > 1:
-            msg="Cannot add mixin types to collection"
-            raise RuntimeError(msg)
 
         # One basic type is mandatory
-        if len(relations) == 0:
+        if len(obj_types) == 0:
             msg="Must specify a relation type"
             raise RuntimeError(msg)
 
-        relation=relations[0]
-        obj_class_name=obj_classes[0]
-
-        obj=self.factory.construct(collection_name,relation,obj_class_name,**kwargs)
+        obj=self.factory.construct(collection_name,obj_types,**kwargs)
 
         # Fetch collection and add
         collection = getattr(self, collection_name.lower())
@@ -118,7 +113,24 @@ class MooseModel():
     def add_variable(self,variable_name,variable_type="MooseVariable",**kwargs_in):
         collection_kwargs=deepcopy(kwargs_in)
         collection_kwargs["collection_type"]=variable_type
+        collection_kwargs["collection_action"]="AddVariableAction"
+
         self.add_to_collection("Variables",variable_name,**collection_kwargs)
+
+    def add_kernel(self,kernel_name,kernel_type,**kwargs_in):
+        collection_kwargs=deepcopy(kwargs_in)
+        collection_kwargs["collection_type"]=kernel_type
+        self.add_to_collection("Kernels",kernel_name,**collection_kwargs)
+
+    def add_bc(self,bc_name,bc_type,**kwargs_in):
+        collection_kwargs=deepcopy(kwargs_in)
+        collection_kwargs["collection_type"]=bc_type
+        self.add_to_collection("BCs",bc_name,**collection_kwargs)
+
+    def add_material(self,mat_name,mat_type,**kwargs_in):
+        collection_kwargs=deepcopy(kwargs_in)
+        collection_kwargs["collection_type"]=mat_type
+        self.add_to_collection("Materials",mat_name,**collection_kwargs)
 
     def to_str(self,print_default=False):
         model_str=""
@@ -132,3 +144,17 @@ class MooseModel():
         file_handle.write(self.to_str())
         file_handle.close()
         print("Wrote to ",filename)
+
+class TransientModel(MooseModel):
+    """Class to represent a MOOSE model"""
+    def __init__(self,factory_in):
+        super().__init__(factory_in)
+
+    def load_default_syntax(self):
+        self.add_syntax("Executioner", obj_type="Transient")
+        self.add_syntax("Mesh", obj_type="GeneratedMesh")
+        self.add_syntax("Variables")
+        #self.add_syntax("Kernels")
+        #self.add_syntax("Materials")
+        #self.add_syntax("BCs")
+        #self.add_syntax("Outputs")

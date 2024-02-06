@@ -7,20 +7,26 @@ class Factory():
     def __init__(self,exec_path,config_file=None):
         print("Loading syntax from library...")
         json_obj=json_from_exec(exec_path)
+        print("Done")
 
         print("Constructing syntax registry...")
         self.registry=SyntaxRegistry(json_obj)
+        self.available_blocks=self.registry.get_available_blocks()
+        print("Done")
 
         print("Configuring objects to enable...")
-        self.available_blocks=self.registry.get_available_blocks()
         self.set_defaults()
+        print("Done")
 
         if config_file is not None:
             print("Loading configuration from file",config_file)
             self.load_config(config_file)
+            print("Done")
 
         print("Loading enabled objects...")
         self.load_enabled_objects(json_obj)
+        print("Done")
+
 
     def _load_root_syntax(self,block_name, block):
         """
@@ -157,14 +163,8 @@ class Factory():
         for relation_type,derived_type in obj_types.items():
             if relation_type not in mixins.keys():
                 raise RuntimeError("{} is not an available mix-in".format(relation_type))
-            mixin_base_class=mixins[relation_type]
-
             # Fetch derived class for mix-in
             class_now=self.constructors[root_name][relation_type][derived_type]
-
-            # Check provided object type is of the correct type
-            if not issubclass(class_now,mixin_base_class):
-                raise RuntimeError("{} has wrong base class".format(derived_type))
 
             # Update
             mixins_now[relation_type]=class_now
@@ -209,13 +209,14 @@ class Factory():
 
         return obj
 
-    def construct(self,root_name,relation_type,derived_type, **kwargs):
-        class_now=self.constructors[root_name][relation_type][derived_type]
+    def construct(self,root_name,obj_types, **kwargs):
+        class_now=self.derive_class(root_name,obj_types)
         obj=class_now()
+
         # Handle keyword arguments
         for key, value in kwargs.items():
             if not hasattr(obj,key):
-                msg="Object type {} does not have attribute {}".format(root_name,key)
+                msg="Object type {} does not have attribute {}".format(derived_type,key)
                 raise RuntimeError(msg)
             setattr(obj, key, value)
         return obj
@@ -277,11 +278,17 @@ class Factory():
 
     def set_defaults(self):
         mesh_enable_dict={
-            "action": ["CreateDisplacedProblemAction",
-                       "DisplayGhostingAction"],
             "obj_type": ["FileMesh","GeneratedMesh"]
         }
         self.enable_syntax("Mesh",enable_dict=mesh_enable_dict)
-        self.enable_syntax("Executioner")
+
+        executioner_enable_dict={
+            "obj_type": ["Steady","Transient"]
+        }
+        self.enable_syntax("Executioner", executioner_enable_dict)
         self.enable_syntax("Problem")
         self.enable_syntax("Variables")
+        self.enable_syntax("Kernels")
+        self.enable_syntax("Materials")
+        self.enable_syntax("BCs")
+        self.enable_syntax("Outputs")
