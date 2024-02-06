@@ -100,6 +100,10 @@ class Factory():
                 # Loop over and make into properties
                 for attr_name, moose_param in moose_param_dict_local.items():
                     # Crucially, acts on the instance, not the class.
+                    if hasattr(self,attr_name):
+                        msg="Warning! Syntax collision for attribute {} in class {}. Skipping.".format(attr_name, self.__class__.__name__)
+                        print(msg)
+                        continue
                     setattr(self,attr_name,moose_param.val)
             #Todo: apply kwargs
 

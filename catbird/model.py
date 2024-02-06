@@ -154,7 +154,7 @@ class TransientModel(MooseModel):
         self.add_syntax("Executioner", obj_type="Transient")
         self.add_syntax("Mesh", obj_type="GeneratedMesh")
         self.add_syntax("Variables")
-        #self.add_syntax("Kernels")
+        self.add_syntax("Kernels")
         #self.add_syntax("Materials")
         #self.add_syntax("BCs")
         #self.add_syntax("Outputs")
