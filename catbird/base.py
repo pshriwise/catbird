@@ -1,4 +1,5 @@
 from abc import ABC
+from collections.abc import Iterable
 from .param import MooseParam
 from .string import MooseString
 
@@ -9,10 +10,27 @@ class MooseBase(ABC,MooseString):
     def __setattr__(self, attr_name, value_in):
         value_to_set=value_in
         if hasattr(self,attr_name):
-            type_now=type(getattr(self,attr_name))
+            attr_val_now=getattr(self,attr_name)
+            type_now=type(attr_val_now)
+
+            sub_type_now=None
+            if issubclass(type_now, Iterable) and type_now != str :
+                sub_type_now=type(attr_val_now[0])
+
             if not isinstance(value_in,type_now):
+                # If not the right type, try to cast
+                values=None
+                if isinstance(value_in,str):
+                    values=value_in.split()
+
                 try:
-                    value_to_set=type_now(value_in)
+                    if sub_type_now is not None:
+                        if values:
+                            value_to_set=[ sub_type_now(v) for v in values ]
+                        else:
+                            value_to_set=[sub_type_now(value_in)]
+                    else:
+                        value_to_set=type_now(value_in)
                 except ValueError:
                     msg="Attribute {} should have type {}".format(attr_name,type_now)
                     raise ValueError(msg)
@@ -70,6 +88,7 @@ class MooseBase(ABC,MooseString):
         param=self.get_param(attr_name)
         default_val = param.default
         if default_val is None:
+
             default_val = param.attr_type()
 
         # Compare and return
@@ -80,9 +99,21 @@ class MooseBase(ABC,MooseString):
         if self.is_default(attr_name) and not print_default:
             return attr_str
 
-        attr_val = getattr(self, attr_name)
-        if attr_val is not None:
-            attr_str=self.indent+'{}={}\n'.format(attr_name,attr_val)
+        attr_val=getattr(self, attr_name)
+        if attr_val is None:
+            return attr_str
+
+        type_now=type(attr_val)
+        attr_val_str=""
+        if issubclass(type_now, Iterable) and type_now != str :
+            str_list = [ str(v)+" " for v in attr_val ]
+            attr_val_str="".join(str_list)
+            attr_val_str=attr_val_str.rstrip()
+            attr_val_str="'"+attr_val_str+"'"
+        else:
+            attr_val_str=str(attr_val)
+
+        attr_str=self.indent+'{}='.format(attr_name)+attr_val_str+'\n'
         return attr_str
 
     @classmethod

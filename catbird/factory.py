@@ -150,7 +150,7 @@ class Factory():
                 doc_now=doc_now+base.__doc__
         return doc_now
 
-    def derive_class(self,root_name,obj_types):
+    def derive_class(self,root_name,obj_types,class_name):
         """
         Form a new mix-in class from a tuple of classes
 
@@ -183,7 +183,7 @@ class Factory():
         mixin_tuple=tuple(mixin_list)
 
         # Our fancy new mixin class
-        new_cls = type(root_name, mixin_tuple,
+        new_cls = type(class_name, mixin_tuple,
                        {
                            "__init__": self.__get_init_method(mixin_tuple),
                            "__doc__": self.__get_docstring(mixin_tuple),
@@ -201,7 +201,7 @@ class Factory():
         kwargs: dict
         """
         # Get class
-        obj_class=self.derive_class(root_name, obj_types)
+        obj_class=self.derive_class(root_name, obj_types,root_name)
         obj=obj_class()
 
         # Handle keyword arguments
@@ -213,8 +213,8 @@ class Factory():
 
         return obj
 
-    def construct(self,root_name,obj_types, **kwargs):
-        class_now=self.derive_class(root_name,obj_types)
+    def construct(self,root_name,obj_types,class_name,**kwargs):
+        class_now=self.derive_class(root_name,obj_types,class_name)
         obj=class_now()
 
         # Handle keyword arguments
@@ -293,6 +293,8 @@ class Factory():
         self.enable_syntax("Problem")
         self.enable_syntax("Variables")
         self.enable_syntax("Kernels")
-        self.enable_syntax("Materials")
         self.enable_syntax("BCs")
-        self.enable_syntax("Outputs")
+        self.enable_syntax("Materials")
+        self.enable_syntax("VectorPostprocessors")
+
+        #self.enable_syntax("Outputs")

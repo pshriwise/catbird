@@ -87,7 +87,7 @@ class MooseModel():
         if parent_obj == self:
             self.moose_objects.append(attr_name)
 
-    def add_to_collection(self, collection_name, object_name,**kwargs_in):
+    def add_to_collection(self, collection_name, class_name, object_name,**kwargs_in):
         # First, pop out any relation key-word args
         obj_types={}
         relations=get_relation_kwargs()
@@ -103,7 +103,8 @@ class MooseModel():
             msg="Must specify a relation type"
             raise RuntimeError(msg)
 
-        obj=self.factory.construct(collection_name,obj_types,**kwargs)
+        long_class_name=collection_name+"."+class_name
+        obj=self.factory.construct(collection_name,obj_types,long_class_name,**kwargs)
 
         # Fetch collection and add
         collection = getattr(self, collection_name.lower())
@@ -115,22 +116,22 @@ class MooseModel():
         collection_kwargs["collection_type"]=variable_type
         collection_kwargs["collection_action"]="AddVariableAction"
 
-        self.add_to_collection("Variables",variable_name,**collection_kwargs)
+        self.add_to_collection("Variables","Variable",variable_name,**collection_kwargs)
 
     def add_kernel(self,kernel_name,kernel_type,**kwargs_in):
         collection_kwargs=deepcopy(kwargs_in)
         collection_kwargs["collection_type"]=kernel_type
-        self.add_to_collection("Kernels",kernel_name,**collection_kwargs)
+        self.add_to_collection("Kernels","Kernel",kernel_name,**collection_kwargs)
 
     def add_bc(self,bc_name,bc_type,**kwargs_in):
         collection_kwargs=deepcopy(kwargs_in)
         collection_kwargs["collection_type"]=bc_type
-        self.add_to_collection("BCs",bc_name,**collection_kwargs)
+        self.add_to_collection("BCs","BC", bc_name,**collection_kwargs)
 
     def add_material(self,mat_name,mat_type,**kwargs_in):
         collection_kwargs=deepcopy(kwargs_in)
         collection_kwargs["collection_type"]=mat_type
-        self.add_to_collection("Materials",mat_name,**collection_kwargs)
+        self.add_to_collection("Materials","Material",mat_name,**collection_kwargs)
 
     def to_str(self,print_default=False):
         model_str=""
@@ -155,6 +156,6 @@ class TransientModel(MooseModel):
         self.add_syntax("Mesh", obj_type="GeneratedMesh")
         self.add_syntax("Variables")
         self.add_syntax("Kernels")
-        #self.add_syntax("Materials")
-        #self.add_syntax("BCs")
+        self.add_syntax("BCs")
+        self.add_syntax("Materials")
         #self.add_syntax("Outputs")

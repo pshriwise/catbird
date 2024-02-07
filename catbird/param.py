@@ -2,22 +2,29 @@ class MooseParam():
     """
     Class to contain all information about a MOOSE parameter
     """
-    def __init__(self,attr_name, attr_type, dim=0, default=None, allowed_vals=None, description=None):
+    def __init__(self,attr_name, attr_type, is_array, default=None, allowed_vals=None, description=None):
+
+        assert attr_type is not type(None)
+
         self.attr_type=attr_type
-        self.default=default
         self.allowed_vals=allowed_vals
-        self.dim=dim
+        self.is_array=is_array
 
         # Set name
         if not isinstance(attr_name, str):
             raise ValueError('Attribute names must be strings')
         self.name=attr_name
 
-        # Set value
+        # Set default value
         if default is not None:
-            self.val=default
+            self.default=default
+        elif self.is_array and attr_type!=str:
+            self.default=[attr_type()]
         else:
-            self.val=attr_type()
+            self.default=attr_type()
+
+        # Initialise current value to the default
+        self.val=self.default
 
         # Set docstring
         doc_str = '\n'

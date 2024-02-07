@@ -451,12 +451,11 @@ def get_params_list(json_obj,syntax_path):
         attr_types = tuple(type_mapping[t] for t in param_info['basic_type'].split(':'))
         attr_type = attr_types[-1]
 
+        is_array=False
         if len(attr_types) > 1:
             for t in attr_types[:-1]:
                 assert issubclass(t, Iterable)
-                ndim = len(attr_types) - 1
-        else:
-            ndim = 0
+            is_array=True
 
         # Set allowed values if present
         allowed_values = None
@@ -469,22 +468,25 @@ def get_params_list(json_obj,syntax_path):
         # properties in the type definition as they are now
         default = None
         if 'default' in param_info.keys() and param_info['default'] != None and param_info['default'] != '':
-            if ndim > 0 and attr_type != str :
+            if is_array:
                 defaults = param_info['default']
                 if type(defaults) == str:
                     default = [_convert_to_type(attr_type, v) for v in defaults.split()]
-                else:
+                elif issubclass(type(defaults), Iterable):
                     default = [_convert_to_type(attr_type, v) for v in defaults]
+                else:
+                    default = [defaults]
             else:
                 default = _convert_to_type(attr_type, param_info['default'])
 
         # Create and add a MOOSE parameter
         moose_param=MooseParam(param_name,
                                attr_type,
-                               description=param_info.get('description'),
+                               is_array,
                                default=default,
-                               dim=ndim,
-                               allowed_vals=allowed_values)
+                               allowed_vals=allowed_values,
+                               description=param_info.get('description'),
+        )
 
         moose_param_list.append(moose_param)
 
