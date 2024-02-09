@@ -36,9 +36,9 @@ First, import the package and load available syntax from a MOOSE application.
 >>> from catbird import *
 >>> factory=Factory('./heat_conduction-opt')
 ```
-This may take a few minutes, don't panic. The syntax first has to be dumped from the original application as json and parsed;
+This may take a few minutes, so don't panic if it hangs. The syntax first has to be dumped from the original application as json and then parsed;
 the factory then converts "available" syntax into python object constructors. The more syntax we enable the longer it takes, so if you want
-to speed things up you only want to enable the syntax you intend to use. To write out what obejcts are  currently enabled, try
+to speed things up you should only enable the syntax you intend to use. To write out what objects are  currently enabled, try:
 ```python
 >>> factory.write_config("config.json")
 ```
@@ -46,7 +46,7 @@ We could then edit that file and load it via an optional constructor argument to
 ```python
 >>> lightweight_factory=factory=Factory('./heat_conduction-opt', config="lighweight_config.json")
 ```
-However, modifying the config file directory is likely to very laborious if done manually. Another option
+However, modifying the config file directory is likely to be very laborious if done manually. Another option
 is to derive your own Factory class and override the `set_defaults` method. To limit the enabled syntax, we can pass in dictionaries
 of enabled syntax into the `enable_syntax` method, e.g.:
 ```
@@ -58,11 +58,11 @@ self.enable_syntax("Executioner", executioner_enable_dict)
 ```
 
 ## Create a Model
-With our factory built, all we have in practice is bunch of constructor objects. We now need to create the objects and assemble as a `Model`:
+With our factory built, all we have in practice is bunch of constructor objects. We now need to create the objects and assemble them as a `Model`:
 ```python
 >>> model=MooseModel(factory)
 ```
-This will have created a "boiler-plate" with some sensible base objects to work with. We can now start to set their attributes in an object-oriented way.
+This will have created a "boiler-plate" model with some sensible base objects to work with. We can now start to set their attributes in an object-oriented way.
 ```
 >>> model.mesh.dim=2
 ```
