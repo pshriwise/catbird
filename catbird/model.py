@@ -138,6 +138,11 @@ class MooseModel():
         collection_kwargs["collection_type"]=output_type
         self.add_to_collection("Outputs","Output",output_name,**collection_kwargs)
 
+    def add_mesh_generator(self,mesh_generator_name,mesh_generator_type,**kwargs_in):
+        collection_kwargs=deepcopy(kwargs_in)
+        collection_kwargs["collection_type"]=mesh_generator_type
+        self.add_to_collection("Mesh","MeshGenerator",mesh_generator_name,**collection_kwargs)
+
     def to_str(self,print_default=False):
         model_str=""
         for obj_type in self.moose_objects:
@@ -158,7 +163,7 @@ class TransientModel(MooseModel):
 
     def load_default_syntax(self):
         self.add_syntax("Executioner", obj_type="Transient")
-        self.add_syntax("Mesh", obj_type="GeneratedMesh")
+        self.add_syntax("Mesh")
         self.add_syntax("Variables")
         self.add_syntax("Kernels")
         self.add_syntax("BCs")

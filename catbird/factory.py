@@ -286,14 +286,10 @@ class Factory():
             self.available_blocks[block_name].enabled=block_dict["enabled"]
 
     def set_defaults(self):
-        mesh_enable_dict={
-            "obj_type": ["FileMesh","GeneratedMesh"]
-        }
-        self.enable_syntax("Mesh",enable_dict=mesh_enable_dict)
-
         executioner_enable_dict={
             "obj_type": ["Steady","Transient"]
         }
+        self.enable_syntax("Mesh")
         self.enable_syntax("Executioner", executioner_enable_dict)
         self.enable_syntax("Problem")
         self.enable_syntax("Variables")
