@@ -69,7 +69,7 @@ def main():
 
     model.outputs.exodus=True
     model.add_output("csv",output_type="CSV",
-                     file_base='therm_step03_out',
+                     file_base='thermal_out',
                      execute_on='final')    
         
     # Add some input syntax that wasn't in the vanilla boilerplate model
