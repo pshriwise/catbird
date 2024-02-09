@@ -34,6 +34,8 @@ class Factory():
         """
         assert not block.is_leaf
         self.root_syntax[block.longname]=block.get_mixins()
+        self.collection_syntax[block.longname]=block.get_collection_mixins()
+
 
     def _load_leaf_syntax(self,block_name,block,json_obj):
         """
@@ -66,10 +68,10 @@ class Factory():
         # Save class constructor
         self.constructors[parent_name][relation][lookup_name]=new_class
 
-
     def load_enabled_objects(self,json_obj):
         self.constructors={}
         self.root_syntax={}
+        self.collection_syntax={}
 
         # Loop over enabled syntax blocks
         for block_name, block in self.available_blocks.items():
@@ -150,7 +152,7 @@ class Factory():
                 doc_now=doc_now+base.__doc__
         return doc_now
 
-    def derive_class(self,root_name,obj_types,class_name):
+    def derive_class(self,root_name,obj_types,class_name,in_collection=False):
         """
         Form a new mix-in class from a tuple of classes
 
@@ -160,7 +162,10 @@ class Factory():
         obj_types: dict
         """
         # Get mixins boilerplate
-        mixins=self.root_syntax[root_name]
+        if in_collection:
+            mixins=self.collection_syntax[root_name]
+        else:
+            mixins=self.root_syntax[root_name]
 
         # Update mixins list by comparing types
         mixins_now=deepcopy(mixins)
@@ -213,8 +218,8 @@ class Factory():
 
         return obj
 
-    def construct(self,root_name,obj_types,class_name,**kwargs):
-        class_now=self.derive_class(root_name,obj_types,class_name)
+    def construct(self,root_name,obj_types,class_name,in_collection,**kwargs):
+        class_now=self.derive_class(root_name,obj_types,class_name,in_collection)
         obj=class_now()
 
         # Handle keyword arguments
@@ -296,5 +301,4 @@ class Factory():
         self.enable_syntax("BCs")
         self.enable_syntax("Materials")
         self.enable_syntax("VectorPostprocessors")
-
-        #self.enable_syntax("Outputs")
+        self.enable_syntax("Outputs")

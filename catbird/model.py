@@ -104,7 +104,7 @@ class MooseModel():
             raise RuntimeError(msg)
 
         long_class_name=collection_name+"."+class_name
-        obj=self.factory.construct(collection_name,obj_types,long_class_name,**kwargs)
+        obj=self.factory.construct(collection_name,obj_types,long_class_name,in_collection=True,**kwargs)
 
         # Fetch collection and add
         collection = getattr(self, collection_name.lower())
@@ -133,6 +133,11 @@ class MooseModel():
         collection_kwargs["collection_type"]=mat_type
         self.add_to_collection("Materials","Material",mat_name,**collection_kwargs)
 
+    def add_output(self,output_name,output_type,**kwargs_in):
+        collection_kwargs=deepcopy(kwargs_in)
+        collection_kwargs["collection_type"]=output_type
+        self.add_to_collection("Outputs","Output",output_name,**collection_kwargs)
+
     def to_str(self,print_default=False):
         model_str=""
         for obj_type in self.moose_objects:
@@ -158,4 +163,4 @@ class TransientModel(MooseModel):
         self.add_syntax("Kernels")
         self.add_syntax("BCs")
         self.add_syntax("Materials")
-        #self.add_syntax("Outputs")
+        self.add_syntax("Outputs", action="CommonOutputAction")

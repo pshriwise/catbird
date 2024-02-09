@@ -30,7 +30,7 @@ _mixin_map={
     "action": MooseAction,
     "system": MooseCollection,
     "collection_type" : MooseCollection,
-    "collection_action": MooseCollection, # Don't support this syntax yet
+    "collection_action": MooseCollection,
     "nested_system":  None, # The attribute should be added one layer down
     "nested_collection_action": None, # Don't support this syntax yet
     "nested_collection_type": None, # Don't support this syntax yet
@@ -41,11 +41,17 @@ _child_type_map={
     "action": MooseAction,
     "system": None,
     "collection_type" : MooseObject,
-    "collection_action": MooseAction, # Don't support this syntax yet
-    "nested_system":  None, # The attribute should be added one layer down
+    "collection_action": MooseAction,
+    "nested_system":  None,  # Don't support this syntax yet
     "nested_collection_action": None, # Don't support this syntax yet
     "nested_collection_type": None, # Don't support this syntax yet
 }
+
+_collection_type_map={
+    "collection_type" : MooseObject,
+    "collection_action": MooseAction,
+}
+
 
 def get_relation_kwargs():
     return _relation_shorthands.values()
@@ -219,6 +225,14 @@ class SyntaxBlock():
                 mixin_dict[relation_type]=mixin_now
         return mixin_dict
 
+    def get_collection_mixins(self):
+        mixin_dict={}
+        for relation_type in self.available_syntax.keys():
+            if relation_type in _collection_type_map.keys():
+                mixin_now=_collection_type_map[relation_type]
+                if mixin_now is not None:
+                    mixin_dict[relation_type]=mixin_now
+        return mixin_dict
 
     @property
     def parent_longname(self):
