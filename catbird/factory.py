@@ -100,14 +100,21 @@ class Factory():
                 moose_param_dict_local=getattr(self,base.params_name)
 
                 # Loop over and make into properties
+                duplicated_params=[]
                 for attr_name, moose_param in moose_param_dict_local.items():
                     # Crucially, acts on the instance, not the class.
                     if hasattr(self,attr_name):
+                        # MOOSE is stupid, sometimes parameters can come from more than one source.
+                        # If this happens, warn and skip, then remove from list afterwards
+                        duplicated_params.append(attr_name)
                         msg="Warning! Syntax collision for attribute {} in class {}. Skipping.".format(attr_name, self.__class__.__name__)
                         print(msg)
                         continue
                     setattr(self,attr_name,moose_param.val)
-            #Todo: apply kwargs
+                for attr_name in duplicated_params:
+                     moose_param_dict_local.pop(attr_name)
+
+            #Todo: apply kwargs here?
 
         return __init__
 
@@ -117,7 +124,7 @@ class Factory():
         def inner_to_str(self,print_default=False):
             inner_str=""
             for base in mixins:
-                inner_str+=base.inner_to_str(self)
+                inner_str+=base.inner_to_str(self, print_default)
             return inner_str
         return inner_to_str
 

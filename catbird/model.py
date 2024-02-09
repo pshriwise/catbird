@@ -150,9 +150,9 @@ class MooseModel():
             model_str+=obj.to_str(print_default)
         return model_str
 
-    def write(self, filename):
+    def write(self, filename, print_default=False):
         file_handle = open(filename,'w')
-        file_handle.write(self.to_str())
+        file_handle.write(self.to_str(print_default))
         file_handle.close()
         print("Wrote to ",filename)
 
