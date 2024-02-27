@@ -22,15 +22,13 @@ def json_from_exec(exec):
     json_str = ''
 
     # filter out the header and footer from the json data
+    while json_proc.stdout.readline().decode().find('**START JSON DATA**') < 0:
+        pass
+
     while True:
         line = json_proc.stdout.readline().decode()
-        if not line:
+        if not line or line.find('**END JSON DATA**') >= 0:
             break
-        if '**START JSON DATA**' in line:
-            continue
-        if '**END JSON DATA**' in line:
-            continue
-
         json_str += line
 
     j_obj = json.loads(json_str)
